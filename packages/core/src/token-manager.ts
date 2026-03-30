@@ -105,6 +105,10 @@ export class TokenManager {
     try {
       const response = await this.refreshFn?.(refreshToken);
 
+      if (!response) {
+        throw new TokenRefreshError('No refresh function configured');
+      }
+
       this.setTokens({
         accessToken: response.accessToken,
         refreshToken: response.refreshToken,
