@@ -1,0 +1,35 @@
+import { defineConfig } from 'tsup';
+
+export default defineConfig({
+  entry: {
+    index: 'src/index.ts',
+    'adapters/jwt': 'src/adapters/jwt.ts',
+    'adapters/cookie': 'src/adapters/cookie.ts',
+    'adapters/session': 'src/adapters/session.ts',
+    'plugins/password': 'src/plugins/password.ts',
+    'plugins/oauth-github': 'src/plugins/oauth-github.ts',
+    'plugins/oauth-google': 'src/plugins/oauth-google.ts',
+    'plugins/oauth-wechat': 'src/plugins/oauth-wechat.ts',
+    'plugins/passkey': 'src/plugins/passkey.ts',
+  },
+  format: ['esm', 'cjs'],
+  dts: true,
+  clean: true,
+  sourcemap: true,
+  minify: false,
+  treeshake: true,
+  external: [
+    'react',
+    'swr',
+    '@swr-login/core',
+    '@swr-login/react',
+    '@swr-login/adapter-jwt',
+    '@swr-login/adapter-cookie',
+    '@swr-login/adapter-session',
+    '@swr-login/plugin-password',
+    '@swr-login/plugin-oauth-github',
+    '@swr-login/plugin-oauth-google',
+    '@swr-login/plugin-oauth-wechat',
+    '@swr-login/plugin-passkey',
+  ],
+});

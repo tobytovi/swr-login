@@ -197,6 +197,50 @@ importers:
         specifier: ^19.0.0
         version: 19.2.14
 
+  packages/swr-login:
+    dependencies:
+      '@swr-login/core':
+        specifier: workspace:*
+        version: link:../core
+      '@swr-login/react':
+        specifier: workspace:*
+        version: link:../react
+      react:
+        specifier: '>=18.0.0'
+        version: 19.2.4
+      swr:
+        specifier: '>=2.0.0'
+        version: 2.4.1(react@19.2.4)
+    optionalDependencies:
+      '@swr-login/adapter-cookie':
+        specifier: workspace:*
+        version: link:../adapter-cookie
+      '@swr-login/adapter-jwt':
+        specifier: workspace:*
+        version: link:../adapter-jwt
+      '@swr-login/adapter-session':
+        specifier: workspace:*
+        version: link:../adapter-session
+      '@swr-login/plugin-oauth-github':
+        specifier: workspace:*
+        version: link:../plugin-oauth-github
+      '@swr-login/plugin-oauth-google':
+        specifier: workspace:*
+        version: link:../plugin-oauth-google
+      '@swr-login/plugin-oauth-wechat':
+        specifier: workspace:*
+        version: link:../plugin-oauth-wechat
+      '@swr-login/plugin-passkey':
+        specifier: workspace:*
+        version: link:../plugin-passkey
+      '@swr-login/plugin-password':
+        specifier: workspace:*
+        version: link:../plugin-password
+    devDependencies:
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.14
+
 packages:
 
   '@alloc/quick-lru@5.2.0':

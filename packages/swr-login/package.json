@@ -1,0 +1,152 @@
+{
+  "name": "swr-login",
+  "version": "0.1.0",
+  "description": "The best React Hook for auth state management. Works with any backend.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./adapters/jwt": {
+      "import": {
+        "types": "./dist/adapters/jwt.d.ts",
+        "default": "./dist/adapters/jwt.js"
+      },
+      "require": {
+        "types": "./dist/adapters/jwt.d.cts",
+        "default": "./dist/adapters/jwt.cjs"
+      }
+    },
+    "./adapters/cookie": {
+      "import": {
+        "types": "./dist/adapters/cookie.d.ts",
+        "default": "./dist/adapters/cookie.js"
+      },
+      "require": {
+        "types": "./dist/adapters/cookie.d.cts",
+        "default": "./dist/adapters/cookie.cjs"
+      }
+    },
+    "./adapters/session": {
+      "import": {
+        "types": "./dist/adapters/session.d.ts",
+        "default": "./dist/adapters/session.js"
+      },
+      "require": {
+        "types": "./dist/adapters/session.d.cts",
+        "default": "./dist/adapters/session.cjs"
+      }
+    },
+    "./plugins/password": {
+      "import": {
+        "types": "./dist/plugins/password.d.ts",
+        "default": "./dist/plugins/password.js"
+      },
+      "require": {
+        "types": "./dist/plugins/password.d.cts",
+        "default": "./dist/plugins/password.cjs"
+      }
+    },
+    "./plugins/oauth-github": {
+      "import": {
+        "types": "./dist/plugins/oauth-github.d.ts",
+        "default": "./dist/plugins/oauth-github.js"
+      },
+      "require": {
+        "types": "./dist/plugins/oauth-github.d.cts",
+        "default": "./dist/plugins/oauth-github.cjs"
+      }
+    },
+    "./plugins/oauth-google": {
+      "import": {
+        "types": "./dist/plugins/oauth-google.d.ts",
+        "default": "./dist/plugins/oauth-google.js"
+      },
+      "require": {
+        "types": "./dist/plugins/oauth-google.d.cts",
+        "default": "./dist/plugins/oauth-google.cjs"
+      }
+    },
+    "./plugins/oauth-wechat": {
+      "import": {
+        "types": "./dist/plugins/oauth-wechat.d.ts",
+        "default": "./dist/plugins/oauth-wechat.js"
+      },
+      "require": {
+        "types": "./dist/plugins/oauth-wechat.d.cts",
+        "default": "./dist/plugins/oauth-wechat.cjs"
+      }
+    },
+    "./plugins/passkey": {
+      "import": {
+        "types": "./dist/plugins/passkey.d.ts",
+        "default": "./dist/plugins/passkey.js"
+      },
+      "require": {
+        "types": "./dist/plugins/passkey.d.cts",
+        "default": "./dist/plugins/passkey.cjs"
+      }
+    }
+  },
+  "files": ["dist"],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@swr-login/core": "workspace:*",
+    "@swr-login/react": "workspace:*"
+  },
+  "optionalDependencies": {
+    "@swr-login/adapter-jwt": "workspace:*",
+    "@swr-login/adapter-cookie": "workspace:*",
+    "@swr-login/adapter-session": "workspace:*",
+    "@swr-login/plugin-password": "workspace:*",
+    "@swr-login/plugin-oauth-github": "workspace:*",
+    "@swr-login/plugin-oauth-google": "workspace:*",
+    "@swr-login/plugin-oauth-wechat": "workspace:*",
+    "@swr-login/plugin-passkey": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "swr": ">=2.0.0"
+  },
+  "keywords": [
+    "swr",
+    "login",
+    "auth",
+    "authentication",
+    "react",
+    "hook",
+    "jwt",
+    "oauth",
+    "passkey",
+    "webauthn"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/swr-login/swr-login",
+    "directory": "packages/swr-login"
+  },
+  "homepage": "https://github.com/swr-login/swr-login#readme",
+  "bugs": "https://github.com/swr-login/swr-login/issues",
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0"
+  }
+}
