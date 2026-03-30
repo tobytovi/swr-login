@@ -1,4 +1,4 @@
-import { NetworkError, type AuthResponse, type SWRLoginPlugin } from '@swr-login/core';
+import { type AuthResponse, NetworkError, type SWRLoginPlugin } from '@swr-login/core';
 
 /** Credentials for password-based login */
 export interface PasswordCredentials {
@@ -40,7 +40,9 @@ export interface PasswordPluginOptions {
  * <SWRLoginProvider config={{ plugins: [plugin], ... }}>
  * ```
  */
-export function PasswordPlugin(options: PasswordPluginOptions): SWRLoginPlugin<PasswordCredentials> {
+export function PasswordPlugin(
+  options: PasswordPluginOptions,
+): SWRLoginPlugin<PasswordCredentials> {
   const { loginUrl, logoutUrl, fetchOptions = {}, transformResponse } = options;
 
   return {
@@ -60,10 +62,7 @@ export function PasswordPlugin(options: PasswordPluginOptions): SWRLoginPlugin<P
       });
 
       if (!response.ok) {
-        throw new NetworkError(
-          `Login failed: ${response.statusText}`,
-          response.status,
-        );
+        throw new NetworkError(`Login failed: ${response.statusText}`, response.status);
       }
 
       const data = await response.json();

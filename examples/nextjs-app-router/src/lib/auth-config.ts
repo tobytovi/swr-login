@@ -1,9 +1,9 @@
-import type { SWRLoginConfig } from '@swr-login/core';
 import { JWTAdapter } from '@swr-login/adapter-jwt';
-import { PasswordPlugin } from '@swr-login/plugin-password';
-import { GoogleOAuthPlugin } from '@swr-login/plugin-oauth-google';
+import type { SWRLoginConfig } from '@swr-login/core';
 import { GitHubOAuthPlugin } from '@swr-login/plugin-oauth-github';
+import { GoogleOAuthPlugin } from '@swr-login/plugin-oauth-google';
 import { PasskeyPlugin } from '@swr-login/plugin-passkey';
+import { PasswordPlugin } from '@swr-login/plugin-password';
 
 /**
  * Shared auth configuration used by the SWRLoginProvider.

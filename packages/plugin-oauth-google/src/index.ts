@@ -1,11 +1,11 @@
 import {
+  type AuthResponse,
   OAuthPopupError,
+  type SWRLoginPlugin,
   generateCSRFState,
   generatePKCE,
   storePKCEVerifier,
   validateCSRFState,
-  type AuthResponse,
-  type SWRLoginPlugin,
 } from '@swr-login/core';
 
 export interface GoogleOAuthCredentials {
@@ -70,7 +70,7 @@ export function GoogleOAuthPlugin(
     name: 'oauth-google',
     type: 'oauth',
 
-    async login(credentials = {}, ctx) {
+    async login(credentials, ctx) {
       const mode = credentials.mode ?? 'popup';
       const scopes = credentials.scopes ?? DEFAULT_SCOPES;
 

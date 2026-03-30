@@ -1,5 +1,5 @@
-import type { AuthEventEmitter } from './event-emitter';
 import { PluginInitError, PluginNotFoundError } from './errors';
+import type { AuthEventEmitter } from './event-emitter';
 import type { TokenManager } from './token-manager';
 import type { AuthResponse, PluginContext, SWRLoginPlugin } from './types';
 

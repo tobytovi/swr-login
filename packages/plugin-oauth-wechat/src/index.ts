@@ -1,8 +1,8 @@
 import {
-  generateCSRFState,
-  validateCSRFState,
   type AuthResponse,
   type SWRLoginPlugin,
+  generateCSRFState,
+  validateCSRFState,
 } from '@swr-login/core';
 
 export interface WeChatCredentials {
@@ -34,7 +34,7 @@ const WECHAT_AUTHORIZE_URL = 'https://open.weixin.qq.com/connect/oauth2/authoriz
 
 declare global {
   interface Window {
-    WxLogin?: new (options: Record<string, unknown>) => void;
+    WxLogin?: new (options: Record<string, unknown>) => undefined;
   }
 }
 
@@ -58,9 +58,7 @@ declare global {
  * await login('oauth-wechat', { mode: 'qrcode', containerId: 'wechat-qr' });
  * ```
  */
-export function WeChatPlugin(
-  options: WeChatPluginOptions,
-): SWRLoginPlugin<WeChatCredentials> {
+export function WeChatPlugin(options: WeChatPluginOptions): SWRLoginPlugin<WeChatCredentials> {
   const {
     appId,
     redirectUri,
@@ -71,7 +69,8 @@ export function WeChatPlugin(
   let sdkLoaded = false;
 
   const getRedirectUri = () =>
-    redirectUri ?? (typeof window !== 'undefined' ? `${window.location.origin}/auth/wechat/callback` : '');
+    redirectUri ??
+    (typeof window !== 'undefined' ? `${window.location.origin}/auth/wechat/callback` : '');
 
   const loadWeChatSDK = (): Promise<void> => {
     if (sdkLoaded || typeof window === 'undefined') return Promise.resolve();
@@ -107,7 +106,7 @@ export function WeChatPlugin(
       }
     },
 
-    async login(credentials = {}, ctx) {
+    async login(credentials, ctx) {
       const mode = credentials.mode ?? 'qrcode';
       const state = generateCSRFState('wechat');
 

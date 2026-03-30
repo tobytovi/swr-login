@@ -1,5 +1,5 @@
-import useSWR from 'swr';
 import type { User } from '@swr-login/core';
+import useSWR from 'swr';
 import { useAuthContext } from '../context';
 
 const AUTH_KEY = '__swr_login_user__';
@@ -61,7 +61,12 @@ export function useUser<T extends User = User>(): UseUserReturn<T> {
     return null;
   };
 
-  const { data, error, isLoading, mutate: swrMutate } = useSWR<T | null>(AUTH_KEY, fetcher, {
+  const {
+    data,
+    error,
+    isLoading,
+    mutate: swrMutate,
+  } = useSWR<T | null>(AUTH_KEY, fetcher, {
     revalidateOnFocus: true,
     revalidateOnReconnect: true,
     shouldRetryOnError: false,

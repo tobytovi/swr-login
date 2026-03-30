@@ -13,18 +13,12 @@ export async function POST(request: Request) {
 
   // Mock validation
   if (!username || !password) {
-    return NextResponse.json(
-      { error: 'Username and password are required' },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: 'Username and password are required' }, { status: 400 });
   }
 
   // Accept any credentials for demo (in prod, validate against DB)
   if (password.length < 3) {
-    return NextResponse.json(
-      { error: 'Invalid credentials' },
-      { status: 401 },
-    );
+    return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
   }
 
   // Mock successful auth response

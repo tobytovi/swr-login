@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo } from 'react';
-import { SWRLoginProvider } from '@swr-login/react';
 import { createAuthConfig } from '@/lib/auth-config';
+import { SWRLoginProvider } from '@swr-login/react';
+import { useMemo } from 'react';
 
 /**
  * Client-side providers wrapper.

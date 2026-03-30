@@ -23,6 +23,7 @@ export class AuthEventEmitter {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, new Set());
     }
+    // biome-ignore lint/style/noNonNullAssertion: set is guaranteed to exist after the check above
     const handlers = this.listeners.get(event)!;
     handlers.add(handler as EventHandler<unknown>);
 

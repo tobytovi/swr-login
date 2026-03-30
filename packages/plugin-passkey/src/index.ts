@@ -1,4 +1,4 @@
-import { NetworkError, type AuthResponse, type SWRLoginPlugin } from '@swr-login/core';
+import { type AuthResponse, NetworkError, type SWRLoginPlugin } from '@swr-login/core';
 
 export interface PasskeyCredentials {
   /** Action: 'register' to create a new passkey, 'login' to authenticate */
@@ -63,21 +63,14 @@ function base64urlToBuffer(base64url: string): ArrayBuffer {
  * });
  * ```
  */
-export function PasskeyPlugin(
-  options: PasskeyPluginOptions,
-): SWRLoginPlugin<PasskeyCredentials> {
-  const {
-    registerOptionsUrl,
-    registerVerifyUrl,
-    loginOptionsUrl,
-    loginVerifyUrl,
-  } = options;
+export function PasskeyPlugin(options: PasskeyPluginOptions): SWRLoginPlugin<PasskeyCredentials> {
+  const { registerOptionsUrl, registerVerifyUrl, loginOptionsUrl, loginVerifyUrl } = options;
 
   return {
     name: 'passkey',
     type: 'passkey',
 
-    async login(credentials = {}, ctx) {
+    async login(credentials, ctx) {
       const action = credentials.action ?? 'login';
 
       if (!window.PublicKeyCredential) {
@@ -180,9 +173,7 @@ export function PasskeyPlugin(
     return authResponse;
   }
 
-  async function handleLogin(
-    ctx: import('@swr-login/core').PluginContext,
-  ): Promise<AuthResponse> {
+  async function handleLogin(ctx: import('@swr-login/core').PluginContext): Promise<AuthResponse> {
     // 1. Get authentication options from server
     const optionsRes = await fetch(loginOptionsUrl, {
       method: 'POST',
@@ -200,12 +191,10 @@ export function PasskeyPlugin(
     const publicKeyOptions: PublicKeyCredentialRequestOptions = {
       ...optionsData,
       challenge: base64urlToBuffer(optionsData.challenge),
-      allowCredentials: optionsData.allowCredentials?.map(
-        (cred: { id: string; type: string }) => ({
-          ...cred,
-          id: base64urlToBuffer(cred.id),
-        }),
-      ),
+      allowCredentials: optionsData.allowCredentials?.map((cred: { id: string; type: string }) => ({
+        ...cred,
+        id: base64urlToBuffer(cred.id),
+      })),
     };
 
     const credential = (await navigator.credentials.get({

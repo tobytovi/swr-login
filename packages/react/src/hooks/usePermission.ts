@@ -54,7 +54,7 @@ export function usePermission(): UsePermissionReturn {
   const hasAllPermissions = useCallback(
     (permissions: string[]): boolean => {
       if (!user?.permissions) return false;
-      return permissions.every((p) => user.permissions!.includes(p));
+      return permissions.every((p) => user.permissions?.includes(p));
     },
     [user],
   );
@@ -62,7 +62,7 @@ export function usePermission(): UsePermissionReturn {
   const hasAnyPermission = useCallback(
     (permissions: string[]): boolean => {
       if (!user?.permissions) return false;
-      return permissions.some((p) => user.permissions!.includes(p));
+      return permissions.some((p) => user.permissions?.includes(p));
     },
     [user],
   );
@@ -70,7 +70,7 @@ export function usePermission(): UsePermissionReturn {
   const hasAllRoles = useCallback(
     (roles: string[]): boolean => {
       if (!user?.roles) return false;
-      return roles.every((r) => user.roles!.includes(r));
+      return roles.every((r) => user.roles?.includes(r));
     },
     [user],
   );
@@ -78,7 +78,7 @@ export function usePermission(): UsePermissionReturn {
   const hasAnyRole = useCallback(
     (roles: string[]): boolean => {
       if (!user?.roles) return false;
-      return roles.some((r) => user.roles!.includes(r));
+      return roles.some((r) => user.roles?.includes(r));
     },
     [user],
   );

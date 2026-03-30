@@ -1,6 +1,6 @@
 'use client';
 
-import { useUser, useLogout, useSession, AuthGuard } from '@swr-login/react';
+import { AuthGuard, useLogout, useSession, useUser } from '@swr-login/react';
 
 export function UserProfile() {
   const { user } = useUser();
@@ -60,7 +60,8 @@ export function UserProfile() {
         fallback={
           <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center">
             <p className="text-gray-500 text-sm">
-              🔒 Admin panel requires the <code className="text-gray-700 font-mono">admin</code> role.
+              🔒 Admin panel requires the <code className="text-gray-700 font-mono">admin</code>{' '}
+              role.
             </p>
           </div>
         }
@@ -68,7 +69,8 @@ export function UserProfile() {
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
           <h3 className="text-lg font-semibold text-amber-900 mb-2">⚡ Admin Panel</h3>
           <p className="text-amber-700 text-sm">
-            You have admin access. Here you can manage users, view analytics, and configure system settings.
+            You have admin access. Here you can manage users, view analytics, and configure system
+            settings.
           </p>
         </div>
       </AuthGuard>

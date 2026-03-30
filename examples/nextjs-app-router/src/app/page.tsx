@@ -1,9 +1,9 @@
 'use client';
 
-import { useUser } from '@swr-login/react';
 import { LoginForm } from '@/components/login-form';
 import { SocialLoginButtons } from '@/components/social-login-buttons';
 import { UserProfile } from '@/components/user-profile';
+import { useUser } from '@swr-login/react';
 
 export default function HomePage() {
   const { isAuthenticated, isLoading } = useUser();

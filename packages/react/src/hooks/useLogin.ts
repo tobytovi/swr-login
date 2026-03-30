@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react';
 import type { AuthResponse } from '@swr-login/core';
+import { useCallback, useState } from 'react';
 import { useAuthContext } from '../context';
 
 export interface UseLoginOptions {
@@ -62,7 +62,9 @@ export function useLogin<TCredentials = unknown>(
         resolvedPlugin = pluginName;
         resolvedCredentials = credentialsOrPluginName as TCredentials;
       } else {
-        throw new Error('[swr-login] Plugin name is required. Provide it to useLogin() or login().');
+        throw new Error(
+          '[swr-login] Plugin name is required. Provide it to useLogin() or login().',
+        );
       }
 
       setIsLoading(true);

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
 import { useLogin } from '@swr-login/react';
+import { type FormEvent, useState } from 'react';
 
 export function LoginForm() {
   const {

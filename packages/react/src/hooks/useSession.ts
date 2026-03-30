@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
 import { isTokenExpired } from '@swr-login/core';
+import { useMemo } from 'react';
 import { useAuthContext } from '../context';
 
 export interface SessionInfo {
@@ -38,7 +38,7 @@ export function useSession(): SessionInfo {
   return useMemo(() => {
     const accessToken = tokenManager.getAccessToken();
     const refreshToken = tokenManager.getRefreshToken();
-    const expiresAt = tokenManager.getAccessToken() ? tokenManager['adapter'].getExpiresAt() : null;
+    const expiresAt = tokenManager.getAccessToken() ? tokenManager.adapter.getExpiresAt() : null;
 
     return {
       accessToken,

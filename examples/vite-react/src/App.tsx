@@ -1,9 +1,17 @@
-import React, { useState } from 'react';
-import { SWRLoginProvider, useLogin, useUser, useLogout, useSession, AuthGuard } from '@swr-login/react';
 import { JWTAdapter } from '@swr-login/adapter-jwt';
-import { PasswordPlugin } from '@swr-login/plugin-password';
-import { GoogleOAuthPlugin } from '@swr-login/plugin-oauth-google';
 import { GitHubOAuthPlugin } from '@swr-login/plugin-oauth-github';
+import { GoogleOAuthPlugin } from '@swr-login/plugin-oauth-google';
+import { PasswordPlugin } from '@swr-login/plugin-password';
+import {
+  AuthGuard,
+  SWRLoginProvider,
+  useLogin,
+  useLogout,
+  useSession,
+  useUser,
+} from '@swr-login/react';
+import type React from 'react';
+import { useState } from 'react';
 
 // ─── Configuration ───────────────────────────────────────────
 
@@ -34,7 +42,11 @@ const config = {
 // ─── Login Page ──────────────────────────────────────────────
 
 function LoginPage() {
-  const { login: passwordLogin, isLoading: isPasswordLoading, error: passwordError } = useLogin('password');
+  const {
+    login: passwordLogin,
+    isLoading: isPasswordLoading,
+    error: passwordError,
+  } = useLogin('password');
   const { login: googleLogin } = useLogin('oauth-google');
   const { login: githubLogin } = useLogin('oauth-github');
 
@@ -78,13 +90,12 @@ function LoginPage() {
         </button>
       </form>
 
-      {passwordError && (
-        <p style={{ color: 'red', marginTop: 8 }}>{passwordError.message}</p>
-      )}
+      {passwordError && <p style={{ color: 'red', marginTop: 8 }}>{passwordError.message}</p>}
 
       <hr style={{ margin: '20px 0' }} />
 
       <button
+        type="button"
         onClick={() => googleLogin({})}
         style={{ width: '100%', padding: 10, marginBottom: 8, cursor: 'pointer' }}
       >
@@ -92,6 +103,7 @@ function LoginPage() {
       </button>
 
       <button
+        type="button"
         onClick={() => githubLogin({})}
         style={{ width: '100%', padding: 10, cursor: 'pointer' }}
       >
@@ -112,11 +124,21 @@ function Dashboard() {
     <div style={{ maxWidth: 600, margin: '40px auto', fontFamily: 'system-ui' }}>
       <h1>Dashboard</h1>
       <div style={{ padding: 16, background: '#f5f5f5', borderRadius: 8 }}>
-        <p><strong>Name:</strong> {user?.name ?? 'N/A'}</p>
-        <p><strong>Email:</strong> {user?.email ?? 'N/A'}</p>
-        <p><strong>ID:</strong> {user?.id}</p>
-        <p><strong>Token:</strong> {accessToken?.slice(0, 20)}...</p>
-        <p><strong>Expires:</strong> {expiresAt ? new Date(expiresAt).toLocaleString() : 'N/A'}</p>
+        <p>
+          <strong>Name:</strong> {user?.name ?? 'N/A'}
+        </p>
+        <p>
+          <strong>Email:</strong> {user?.email ?? 'N/A'}
+        </p>
+        <p>
+          <strong>ID:</strong> {user?.id}
+        </p>
+        <p>
+          <strong>Token:</strong> {accessToken?.slice(0, 20)}...
+        </p>
+        <p>
+          <strong>Expires:</strong> {expiresAt ? new Date(expiresAt).toLocaleString() : 'N/A'}
+        </p>
       </div>
 
       <AuthGuard
@@ -130,6 +152,7 @@ function Dashboard() {
       </AuthGuard>
 
       <button
+        type="button"
         onClick={() => logout()}
         disabled={isLoading}
         style={{ marginTop: 16, padding: '10px 24px', cursor: 'pointer' }}

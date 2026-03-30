@@ -1,6 +1,6 @@
 'use client';
 
-import { AuthGuard, useUser, useSession } from '@swr-login/react';
+import { AuthGuard, useSession, useUser } from '@swr-login/react';
 import Link from 'next/link';
 
 function DashboardContent() {
@@ -12,7 +12,8 @@ function DashboardContent() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
         <p className="text-gray-500 mt-1">
-          This page is protected by <code className="text-sm bg-gray-100 px-1.5 py-0.5 rounded font-mono">AuthGuard</code>.
+          This page is protected by{' '}
+          <code className="text-sm bg-gray-100 px-1.5 py-0.5 rounded font-mono">AuthGuard</code>.
           Unauthenticated users are redirected to sign in.
         </p>
       </div>
@@ -37,7 +38,10 @@ function DashboardContent() {
           <h3 className="font-semibold text-gray-900">Roles</h3>
           <div className="flex flex-wrap gap-1 mt-1">
             {user?.roles?.map((role: string) => (
-              <span key={role} className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium">
+              <span
+                key={role}
+                className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium"
+              >
                 {role}
               </span>
             )) ?? <span className="text-xs text-gray-400">None</span>}

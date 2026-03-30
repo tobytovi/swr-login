@@ -66,5 +66,6 @@ export function safeJsonParse<T>(json: string): T | null {
 /**
  * No-op function for default callbacks.
  */
-// biome-ignore lint: empty function is intentional
-export function noop(): void {}
+export function noop(): void {
+  /* intentionally empty */
+}

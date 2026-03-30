@@ -1,4 +1,3 @@
-import { createContext, useContext } from 'react';
 import type {
   AuthEventEmitter,
   AuthStateMachine,
@@ -7,6 +6,7 @@ import type {
   SWRLoginConfig,
   TokenManager,
 } from '@swr-login/core';
+import { createContext, useContext } from 'react';
 
 /** Internal context value passed through SWRLoginProvider */
 export interface AuthContextValue {

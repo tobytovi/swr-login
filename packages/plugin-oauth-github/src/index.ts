@@ -1,9 +1,9 @@
 import {
+  type AuthResponse,
   OAuthPopupError,
+  type SWRLoginPlugin,
   generateCSRFState,
   validateCSRFState,
-  type AuthResponse,
-  type SWRLoginPlugin,
 } from '@swr-login/core';
 
 export interface GitHubOAuthCredentials {
@@ -61,7 +61,7 @@ export function GitHubOAuthPlugin(
     name: 'oauth-github',
     type: 'oauth',
 
-    async login(credentials = {}, ctx) {
+    async login(credentials, ctx) {
       const mode = credentials.mode ?? 'popup';
       const scopes = credentials.scopes ?? DEFAULT_SCOPES;
       const state = generateCSRFState('github');

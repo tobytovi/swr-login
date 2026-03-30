@@ -1,5 +1,5 @@
-import type { AuthEventEmitter } from './event-emitter';
 import { TokenExpiredError, TokenRefreshError } from './errors';
+import type { AuthEventEmitter } from './event-emitter';
 import type { AuthStateMachine } from './state-machine';
 import type { AuthResponse, TokenAdapter } from './types';
 import { isTokenExpired } from './utils';
@@ -103,7 +103,7 @@ export class TokenManager {
 
   private async _doRefresh(refreshToken: string): Promise<AuthResponse> {
     try {
-      const response = await this.refreshFn!(refreshToken);
+      const response = await this.refreshFn?.(refreshToken);
 
       this.setTokens({
         accessToken: response.accessToken,
@@ -124,9 +124,7 @@ export class TokenManager {
       this.emitter.emit('error', {
         error: err instanceof Error ? err : new TokenRefreshError(),
       });
-      throw new TokenRefreshError(
-        err instanceof Error ? err.message : 'Failed to refresh token',
-      );
+      throw new TokenRefreshError(err instanceof Error ? err.message : 'Failed to refresh token');
     }
   }
 

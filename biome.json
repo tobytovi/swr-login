@@ -22,6 +22,6 @@
     }
   },
   "files": {
-    "ignore": ["node_modules", "dist", ".turbo", "*.md"]
+    "ignore": ["node_modules", "dist", ".turbo", ".next", "*.md"]
   }
 }

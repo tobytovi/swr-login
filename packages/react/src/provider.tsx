@@ -1,12 +1,13 @@
-import React, { useEffect, useMemo, useRef } from 'react';
 import {
   AuthEventEmitter,
   AuthStateMachine,
   BroadcastSync,
   PluginManager,
-  TokenManager,
   type SWRLoginConfig,
+  TokenManager,
 } from '@swr-login/core';
+import type React from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { AuthContext, type AuthContextValue } from './context';
 
 export interface SWRLoginProviderProps {
@@ -52,18 +53,17 @@ export function SWRLoginProvider({ config, children }: SWRLoginProviderProps) {
 
     // Set up broadcast sync if enabled
     const enableSync = config.security?.enableBroadcastSync !== false;
-    const broadcastSync =
-      enableSync && typeof window !== 'undefined' ? new BroadcastSync() : null;
+    const broadcastSync = enableSync && typeof window !== 'undefined' ? new BroadcastSync() : null;
 
     // Wire up lifecycle callbacks
     if (config.onLogin) {
-      emitter.on('login', ({ user }) => config.onLogin!(user));
+      emitter.on('login', ({ user }) => config.onLogin?.(user));
     }
     if (config.onLogout) {
-      emitter.on('logout', () => config.onLogout!());
+      emitter.on('logout', () => config.onLogout?.());
     }
     if (config.onError) {
-      emitter.on('error', ({ error }) => config.onError!(error));
+      emitter.on('error', ({ error }) => config.onError?.(error));
     }
 
     return {
@@ -81,8 +81,14 @@ export function SWRLoginProvider({ config, children }: SWRLoginProviderProps) {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    const { pluginManager, broadcastSync, tokenManager, stateMachine, emitter, config: cfg } =
-      contextValue;
+    const {
+      pluginManager,
+      broadcastSync,
+      tokenManager,
+      stateMachine,
+      emitter,
+      config: cfg,
+    } = contextValue;
 
     // Initialize all plugins
     pluginManager.initializeAll().catch((err) => {

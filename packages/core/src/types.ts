@@ -62,13 +62,7 @@ export interface AuthResponse {
 // ─── Plugin System ───────────────────────────────────────────
 
 /** Plugin type categories */
-export type PluginType =
-  | 'password'
-  | 'oauth'
-  | 'otp'
-  | 'magic-link'
-  | 'web3'
-  | 'passkey';
+export type PluginType = 'password' | 'oauth' | 'otp' | 'magic-link' | 'web3' | 'passkey';
 
 /** Context passed to plugins during lifecycle methods */
 export interface PluginContext {

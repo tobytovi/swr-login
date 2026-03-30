@@ -1,6 +1,6 @@
-import React from 'react';
-import { useUser } from '../hooks/useUser';
+import type React from 'react';
 import { usePermission } from '../hooks/usePermission';
+import { useUser } from '../hooks/useUser';
 
 export interface AuthGuardProps {
   children: React.ReactNode;

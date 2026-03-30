@@ -18,9 +18,7 @@
       }
     }
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "sideEffects": false,
   "scripts": {
     "build": "tsup",
@@ -35,13 +33,7 @@
   "dependencies": {
     "@swr-login/core": "workspace:*"
   },
-  "keywords": [
-    "swr",
-    "login",
-    "auth",
-    "react",
-    "hook"
-  ],
+  "keywords": ["swr", "login", "auth", "react", "hook"],
   "license": "MIT",
   "repository": {
     "type": "git",
