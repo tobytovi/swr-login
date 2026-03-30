@@ -1,0 +1,21 @@
+1:"$Sreact.fragment"
+2:I[6144,["996","static/chunks/996-4fbf03eb5d53e989.js","795","static/chunks/795-74453d1532dd62c4.js","177","static/chunks/app/layout-fa4549eda271f760.js"],"Providers"]
+3:I[8478,["996","static/chunks/996-4fbf03eb5d53e989.js","795","static/chunks/795-74453d1532dd62c4.js","177","static/chunks/app/layout-fa4549eda271f760.js"],"AuthStatus"]
+4:I[2712,[],""]
+5:I[3566,[],""]
+6:I[6677,[],"ClientPageRoot"]
+7:I[1039,["996","static/chunks/996-4fbf03eb5d53e989.js","795","static/chunks/795-74453d1532dd62c4.js","974","static/chunks/app/page-039c7982b7935cf8.js"],"default"]
+a:I[4373,[],"OutletBoundary"]
+c:I[656,[],"AsyncMetadataOutlet"]
+e:I[4373,[],"ViewportBoundary"]
+10:I[4373,[],"MetadataBoundary"]
+11:"$Sreact.suspense"
+13:I[2388,[],""]
+:HL["/_next/static/css/8538a5dad42b15aa.css","style"]
+0:{"P":null,"b":"xS5XyheLgDmpyIXEJHlo1","p":"","c":["",""],"i":false,"f":[[["",{"children":["__PAGE__",{}]},"$undefined","$undefined",true],["",["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/css/8538a5dad42b15aa.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}]],["$","html",null,{"lang":"en","children":["$","body",null,{"className":"min-h-screen bg-gray-50 text-gray-900 antialiased","children":["$","$L2",null,{"children":[["$","header",null,{"className":"sticky top-0 z-50 bg-white/80 backdrop-blur border-b border-gray-200","children":["$","nav",null,{"className":"max-w-5xl mx-auto px-4 h-14 flex items-center justify-between","children":[["$","div",null,{"className":"flex items-center gap-3","children":[["$","span",null,{"className":"text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent","children":"swr-login"}],["$","span",null,{"className":"text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium","children":"Next.js Demo"}]]}],["$","$L3",null,{}]]}]}],["$","main",null,{"className":"max-w-5xl mx-auto px-4 py-8","children":["$","$L4",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L5",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[[["$","title",null,{"children":"404: This page could not be found."}],["$","div",null,{"style":{"fontFamily":"system-ui,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\"","height":"100vh","textAlign":"center","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center"},"children":["$","div",null,{"children":[["$","style",null,{"dangerouslySetInnerHTML":{"__html":"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}"}}],["$","h1",null,{"className":"next-error-h1","style":{"display":"inline-block","margin":"0 20px 0 0","padding":"0 23px 0 0","fontSize":24,"fontWeight":500,"verticalAlign":"top","lineHeight":"49px"},"children":404}],["$","div",null,{"style":{"display":"inline-block"},"children":["$","h2",null,{"style":{"fontSize":14,"fontWeight":400,"lineHeight":"49px","margin":0},"children":"This page could not be found."}]}]]}]}]],[]],"forbidden":"$undefined","unauthorized":"$undefined"}]}]]}]}]}]]}],{"children":["__PAGE__",["$","$1","c",{"children":[["$","$L6",null,{"Component":"$7","searchParams":{},"params":{},"promises":["$@8","$@9"]}],null,["$","$La",null,{"children":["$Lb",["$","$Lc",null,{"promise":"$@d"}]]}]]}],{},null,false]},null,false],["$","$1","h",{"children":[null,[["$","$Le",null,{"children":"$Lf"}],null],["$","$L10",null,{"children":["$","div",null,{"hidden":true,"children":["$","$11",null,{"fallback":null,"children":"$L12"}]}]}]]}],false]],"m":"$undefined","G":["$13",[]],"s":false,"S":true}
+8:{}
+9:"$0:f:0:1:2:children:1:props:children:0:props:params"
+f:[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]
+b:null
+d:{"metadata":[["$","title","0",{"children":"swr-login · Next.js App Router Demo"}],["$","meta","1",{"name":"description","content":"Demonstrates seamless, no-refresh authentication with swr-login in a Next.js App Router project."}]],"error":null,"digest":"$undefined"}
+12:"$d:metadata"

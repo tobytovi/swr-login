@@ -1,0 +1,33 @@
+{
+  "name": "example-nextjs-app-router",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@swr-login/adapter-cookie": "workspace:*",
+    "@swr-login/adapter-jwt": "workspace:*",
+    "@swr-login/core": "workspace:*",
+    "@swr-login/plugin-oauth-github": "workspace:*",
+    "@swr-login/plugin-oauth-google": "workspace:*",
+    "@swr-login/plugin-passkey": "workspace:*",
+    "@swr-login/plugin-password": "workspace:*",
+    "@swr-login/react": "workspace:*",
+    "next": "^15.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "swr": "^2.3.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.2",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "tailwindcss": "^4.2.2",
+    "typescript": "^5.6.0"
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "name": "@swr-login/plugin-passkey",
+  "version": "0.1.0",
+  "description": "WebAuthn/Passkey login plugin for swr-login (biometric & security key authentication)",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": ["dist"],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@swr-login/core": "workspace:*"
+  },
+  "keywords": ["swr-login", "plugin", "passkey", "webauthn", "fido2", "biometric"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/swr-login/swr-login",
+    "directory": "packages/plugin-passkey"
+  },
+  "homepage": "https://github.com/swr-login/swr-login#readme",
+  "bugs": "https://github.com/swr-login/swr-login/issues",
+  "publishConfig": {
+    "access": "public"
+  }
+}

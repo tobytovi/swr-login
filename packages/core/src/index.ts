@@ -1,0 +1,54 @@
+// ─── Types ────────────────────────────────────────────────────
+export type {
+  AuthState,
+  AuthStateChange,
+  User,
+  AuthResponse,
+  PluginType,
+  PluginContext,
+  SWRLoginPlugin,
+  CacheAdapter,
+  TokenAdapter,
+  SWRLoginConfig,
+  SecurityConfig,
+  AuthEventType,
+  AuthEventMap,
+  BroadcastMessageType,
+  BroadcastMessage,
+} from './types';
+
+// ─── Errors ───────────────────────────────────────────────────
+export {
+  AuthError,
+  NetworkError,
+  TokenExpiredError,
+  TokenRefreshError,
+  PluginNotFoundError,
+  PluginInitError,
+  InvalidCredentialsError,
+  CSRFError,
+  OAuthPopupError,
+} from './errors';
+
+// ─── Core Classes ─────────────────────────────────────────────
+export { AuthEventEmitter } from './event-emitter';
+export { AuthStateMachine } from './state-machine';
+export { TokenManager } from './token-manager';
+export type { RefreshFunction } from './token-manager';
+export { PluginManager } from './plugin-manager';
+export { BroadcastSync } from './broadcast-sync';
+
+// ─── Security Utilities ───────────────────────────────────────
+export { generatePKCE, storePKCEVerifier, retrievePKCEVerifier } from './security/pkce';
+export type { PKCECodePair } from './security/pkce';
+export { generateCSRFState, validateCSRFState, clearCSRFStates } from './security/csrf';
+
+// ─── Utilities ────────────────────────────────────────────────
+export {
+  generateRandomString,
+  base64urlEncode,
+  sha256,
+  isTokenExpired,
+  generateTabId,
+  safeJsonParse,
+} from './utils';

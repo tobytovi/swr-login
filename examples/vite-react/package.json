@@ -1,0 +1,29 @@
+{
+  "name": "example-vite-react",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@swr-login/adapter-jwt": "workspace:*",
+    "@swr-login/core": "workspace:*",
+    "@swr-login/plugin-oauth-github": "workspace:*",
+    "@swr-login/plugin-oauth-google": "workspace:*",
+    "@swr-login/plugin-password": "workspace:*",
+    "@swr-login/react": "workspace:*",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "swr": "^2.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "typescript": "^5.6.0",
+    "vite": "^6.0.0"
+  }
+}
