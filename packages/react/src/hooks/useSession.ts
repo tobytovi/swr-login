@@ -38,7 +38,7 @@ export function useSession(): SessionInfo {
   return useMemo(() => {
     const accessToken = tokenManager.getAccessToken();
     const refreshToken = tokenManager.getRefreshToken();
-    const expiresAt = tokenManager.getAccessToken() ? tokenManager.adapter.getExpiresAt() : null;
+    const expiresAt = tokenManager.getAccessToken() ? tokenManager.getExpiresAt() : null;
 
     return {
       accessToken,

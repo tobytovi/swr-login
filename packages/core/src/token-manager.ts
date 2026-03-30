@@ -50,6 +50,11 @@ export class TokenManager {
     return isTokenExpired(this.adapter.getExpiresAt());
   }
 
+  /** Get token expiration timestamp */
+  getExpiresAt(): number | null {
+    return this.adapter.getExpiresAt();
+  }
+
   /** Store tokens from an auth response */
   setTokens(tokens: { accessToken: string; refreshToken?: string; expiresAt: number }): void {
     this.adapter.setAccessToken(tokens.accessToken);
