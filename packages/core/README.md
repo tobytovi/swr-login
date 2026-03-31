@@ -4,7 +4,7 @@
 
 [![npm](https://img.shields.io/npm/v/@swr-login/core?color=blue)](https://www.npmjs.com/package/@swr-login/core)
 [![bundle size](https://img.shields.io/bundlephobia/minzip/@swr-login/core)](https://bundlephobia.com/package/@swr-login/core)
-[![license](https://img.shields.io/github/license/swr-login/swr-login)](https://github.com/swr-login/swr-login/blob/main/LICENSE)
+[![license](https://img.shields.io/github/license/swr-login/swr-login)](https://github.com/tobytovi/swr-login/blob/main/LICENSE)
 
 ## Install
 
@@ -60,8 +60,8 @@ const MyPlugin: SWRLoginPlugin<{ token: string }> = {
 
 ## Part of swr-login
 
-This is the framework-agnostic core of the [swr-login](https://github.com/swr-login/swr-login) project. For React bindings, see [`@swr-login/react`](https://www.npmjs.com/package/@swr-login/react).
+This is the framework-agnostic core of the [swr-login](https://github.com/tobytovi/swr-login) project. For React bindings, see [`@swr-login/react`](https://www.npmjs.com/package/@swr-login/react).
 
 ## License
 
-[MIT](https://github.com/swr-login/swr-login/blob/main/LICENSE)
+[MIT](https://github.com/tobytovi/swr-login/blob/main/LICENSE)

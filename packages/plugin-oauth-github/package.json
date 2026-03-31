@@ -32,11 +32,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/swr-login/swr-login",
+    "url": "https://github.com/tobytovi/swr-login",
     "directory": "packages/plugin-oauth-github"
   },
-  "homepage": "https://github.com/swr-login/swr-login#readme",
-  "bugs": "https://github.com/swr-login/swr-login/issues",
+  "homepage": "https://github.com/tobytovi/swr-login#readme",
+  "bugs": "https://github.com/tobytovi/swr-login/issues",
   "publishConfig": {
     "access": "public"
   }

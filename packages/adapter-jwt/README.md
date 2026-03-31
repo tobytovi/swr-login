@@ -3,7 +3,7 @@
 > JWT token storage adapter for swr-login (localStorage / sessionStorage / memory).
 
 [![npm](https://img.shields.io/npm/v/@swr-login/adapter-jwt?color=blue)](https://www.npmjs.com/package/@swr-login/adapter-jwt)
-[![license](https://img.shields.io/github/license/swr-login/swr-login)](https://github.com/swr-login/swr-login/blob/main/LICENSE)
+[![license](https://img.shields.io/github/license/swr-login/swr-login)](https://github.com/tobytovi/swr-login/blob/main/LICENSE)
 
 ## Install
 
@@ -38,8 +38,8 @@ Then pass it to your swr-login config:
 
 ## Part of swr-login
 
-See the full project at [github.com/swr-login/swr-login](https://github.com/swr-login/swr-login).
+See the full project at [github.com/tobytovi/swr-login](https://github.com/tobytovi/swr-login).
 
 ## License
 
-[MIT](https://github.com/swr-login/swr-login/blob/main/LICENSE)
+[MIT](https://github.com/tobytovi/swr-login/blob/main/LICENSE)

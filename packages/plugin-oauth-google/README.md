@@ -3,7 +3,7 @@
 > Google OAuth 2.0 login plugin for swr-login (supports Popup & Redirect with PKCE).
 
 [![npm](https://img.shields.io/npm/v/@swr-login/plugin-oauth-google?color=blue)](https://www.npmjs.com/package/@swr-login/plugin-oauth-google)
-[![license](https://img.shields.io/github/license/swr-login/swr-login)](https://github.com/swr-login/swr-login/blob/main/LICENSE)
+[![license](https://img.shields.io/github/license/swr-login/swr-login)](https://github.com/tobytovi/swr-login/blob/main/LICENSE)
 
 ## Install
 
@@ -41,8 +41,8 @@ const { login, isLoading } = useLogin('google');
 
 ## Part of swr-login
 
-See the full project at [github.com/swr-login/swr-login](https://github.com/swr-login/swr-login).
+See the full project at [github.com/tobytovi/swr-login](https://github.com/tobytovi/swr-login).
 
 ## License
 
-[MIT](https://github.com/swr-login/swr-login/blob/main/LICENSE)
+[MIT](https://github.com/tobytovi/swr-login/blob/main/LICENSE)

@@ -3,7 +3,7 @@
 > React bindings for swr-login: Provider, Hooks, and AuthGuard component.
 
 [![npm](https://img.shields.io/npm/v/@swr-login/react?color=blue)](https://www.npmjs.com/package/@swr-login/react)
-[![license](https://img.shields.io/github/license/swr-login/swr-login)](https://github.com/swr-login/swr-login/blob/main/LICENSE)
+[![license](https://img.shields.io/github/license/swr-login/swr-login)](https://github.com/tobytovi/swr-login/blob/main/LICENSE)
 
 ## Install
 
@@ -84,8 +84,8 @@ function LoginButton() {
 
 ## Part of swr-login
 
-This package is the React layer of [swr-login](https://github.com/swr-login/swr-login). The framework-agnostic core is [`@swr-login/core`](https://www.npmjs.com/package/@swr-login/core).
+This package is the React layer of [swr-login](https://github.com/tobytovi/swr-login). The framework-agnostic core is [`@swr-login/core`](https://www.npmjs.com/package/@swr-login/core).
 
 ## License
 
-[MIT](https://github.com/swr-login/swr-login/blob/main/LICENSE)
+[MIT](https://github.com/tobytovi/swr-login/blob/main/LICENSE)

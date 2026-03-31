@@ -3,7 +3,7 @@
 > GitHub OAuth login plugin for swr-login (supports Popup & Redirect).
 
 [![npm](https://img.shields.io/npm/v/@swr-login/plugin-oauth-github?color=blue)](https://www.npmjs.com/package/@swr-login/plugin-oauth-github)
-[![license](https://img.shields.io/github/license/swr-login/swr-login)](https://github.com/swr-login/swr-login/blob/main/LICENSE)
+[![license](https://img.shields.io/github/license/swr-login/swr-login)](https://github.com/tobytovi/swr-login/blob/main/LICENSE)
 
 ## Install
 
@@ -40,8 +40,8 @@ const { login, isLoading } = useLogin('github');
 
 ## Part of swr-login
 
-See the full project at [github.com/swr-login/swr-login](https://github.com/swr-login/swr-login).
+See the full project at [github.com/tobytovi/swr-login](https://github.com/tobytovi/swr-login).
 
 ## License
 
-[MIT](https://github.com/swr-login/swr-login/blob/main/LICENSE)
+[MIT](https://github.com/tobytovi/swr-login/blob/main/LICENSE)

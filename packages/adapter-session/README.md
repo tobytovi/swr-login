@@ -3,7 +3,7 @@
 > Session storage adapter for swr-login (auto-clears when tab closes).
 
 [![npm](https://img.shields.io/npm/v/@swr-login/adapter-session?color=blue)](https://www.npmjs.com/package/@swr-login/adapter-session)
-[![license](https://img.shields.io/github/license/swr-login/swr-login)](https://github.com/swr-login/swr-login/blob/main/LICENSE)
+[![license](https://img.shields.io/github/license/swr-login/swr-login)](https://github.com/tobytovi/swr-login/blob/main/LICENSE)
 
 ## Install
 
@@ -25,8 +25,8 @@ Use this adapter when you want auth tokens to be **scoped to the current browser
 
 ## Part of swr-login
 
-See the full project at [github.com/swr-login/swr-login](https://github.com/swr-login/swr-login).
+See the full project at [github.com/tobytovi/swr-login](https://github.com/tobytovi/swr-login).
 
 ## License
 
-[MIT](https://github.com/swr-login/swr-login/blob/main/LICENSE)
+[MIT](https://github.com/tobytovi/swr-login/blob/main/LICENSE)

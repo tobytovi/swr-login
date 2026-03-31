@@ -314,7 +314,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 ```bash
 # 克隆仓库
-git clone https://github.com/swr-login/swr-login.git
+git clone https://github.com/tobytovi/swr-login.git
 cd swr-login
 
 # 安装依赖

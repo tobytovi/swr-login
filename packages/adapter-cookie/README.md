@@ -3,7 +3,7 @@
 > Cookie storage adapter for swr-login (works with BFF pattern for HttpOnly cookies).
 
 [![npm](https://img.shields.io/npm/v/@swr-login/adapter-cookie?color=blue)](https://www.npmjs.com/package/@swr-login/adapter-cookie)
-[![license](https://img.shields.io/github/license/swr-login/swr-login)](https://github.com/swr-login/swr-login/blob/main/LICENSE)
+[![license](https://img.shields.io/github/license/swr-login/swr-login)](https://github.com/tobytovi/swr-login/blob/main/LICENSE)
 
 ## Install
 
@@ -29,8 +29,8 @@ Use this adapter when your app follows the **BFF (Backend For Frontend)** patter
 
 ## Part of swr-login
 
-See the full project at [github.com/swr-login/swr-login](https://github.com/swr-login/swr-login).
+See the full project at [github.com/tobytovi/swr-login](https://github.com/tobytovi/swr-login).
 
 ## License
 
-[MIT](https://github.com/swr-login/swr-login/blob/main/LICENSE)
+[MIT](https://github.com/tobytovi/swr-login/blob/main/LICENSE)
