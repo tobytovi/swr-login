@@ -6,8 +6,8 @@
 
 Works with Auth.js, Better Auth, Clerk, or your own backend.
 
-[![npm](https://img.shields.io/npm/v/@swr-login/core?color=blue)](https://www.npmjs.com/package/@swr-login/core)
-[![bundle size](https://img.shields.io/bundlephobia/minzip/@swr-login/core?label=core%20size)](https://bundlephobia.com/package/@swr-login/core)
+[![npm](https://img.shields.io/npm/v/swr-login?color=blue)](https://www.npmjs.com/package/swr-login)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/swr-login?label=size)](https://bundlephobia.com/package/swr-login)
 [![license](https://img.shields.io/github/license/swr-login/swr-login)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue)](https://www.typescriptlang.org/)
 
@@ -30,14 +30,13 @@ Works with Auth.js, Better Auth, Clerk, or your own backend.
 ## Quick Start
 
 ```bash
-# Install core + react + JWT adapter + password plugin
-npm install @swr-login/react @swr-login/adapter-jwt @swr-login/plugin-password
+npm install swr-login react swr
 ```
 
 ```tsx
-import { SWRLoginProvider, useLogin, useUser, useLogout } from '@swr-login/react';
-import { JWTAdapter } from '@swr-login/adapter-jwt';
-import { PasswordPlugin } from '@swr-login/plugin-password';
+import { SWRLoginProvider, useLogin, useUser, useLogout } from 'swr-login';
+import { JWTAdapter } from 'swr-login/adapters/jwt';
+import { PasswordPlugin } from 'swr-login/plugins/password';
 
 // 1. Configure provider
 function App() {
@@ -134,26 +133,26 @@ function LoginButton() {
 
 | Package | Channel | Auth Method |
 |---------|---------|-------------|
-| `@swr-login/plugin-password` | Username/Password | Form POST |
-| `@swr-login/plugin-oauth-google` | Google | OAuth 2.0 + PKCE (Popup/Redirect) |
-| `@swr-login/plugin-oauth-github` | GitHub | OAuth (Popup/Redirect) |
-| `@swr-login/plugin-oauth-wechat` | WeChat | QR Code Scan / H5 Web Auth |
-| `@swr-login/plugin-passkey` | Passkey/WebAuthn | Biometric / Security Key |
+| `swr-login/plugins/password` | Username/Password | Form POST |
+| `swr-login/plugins/oauth-google` | Google | OAuth 2.0 + PKCE (Popup/Redirect) |
+| `swr-login/plugins/oauth-github` | GitHub | OAuth (Popup/Redirect) |
+| `swr-login/plugins/oauth-wechat` | WeChat | QR Code Scan / H5 Web Auth |
+| `swr-login/plugins/passkey` | Passkey/WebAuthn | Biometric / Security Key |
 
 ## Storage Adapters
 
 | Package | Strategy | Best For |
 |---------|----------|----------|
-| `@swr-login/adapter-jwt` | localStorage / sessionStorage / memory | SPAs (default) |
-| `@swr-login/adapter-session` | sessionStorage | Tab-scoped sessions |
-| `@swr-login/adapter-cookie` | Cookie (SameSite + Secure) | BFF pattern |
+| `swr-login/adapters/jwt` | localStorage / sessionStorage / memory | SPAs (default) |
+| `swr-login/adapters/session` | sessionStorage | Tab-scoped sessions |
+| `swr-login/adapters/cookie` | Cookie (SameSite + Secure) | BFF pattern |
 
 ## Custom Plugin
 
 Build your own login channel in minutes:
 
 ```ts
-import type { SWRLoginPlugin } from '@swr-login/core';
+import type { SWRLoginPlugin } from 'swr-login';
 
 const MyPlugin: SWRLoginPlugin<{ token: string }> = {
   name: 'my-sso',
@@ -190,6 +189,22 @@ const MyPlugin: SWRLoginPlugin<{ token: string }> = {
 - **BFF-friendly** cookie adapter for HttpOnly token storage
 - **Cross-tab sync** logout via BroadcastChannel
 - **Auto token cleanup** on page visibility change (optional)
+
+## Fine-grained Imports
+
+If you prefer installing only the packages you need, all sub-packages are available individually:
+
+```bash
+npm install @swr-login/react @swr-login/adapter-jwt @swr-login/plugin-password
+```
+
+```ts
+import { SWRLoginProvider, useLogin } from '@swr-login/react';
+import { JWTAdapter } from '@swr-login/adapter-jwt';
+import { PasswordPlugin } from '@swr-login/plugin-password';
+```
+
+See the full list of scoped packages in the [中文文档](./README.zh-CN.md#包列表).
 
 ## License
 

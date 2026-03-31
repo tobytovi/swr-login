@@ -6,8 +6,8 @@
 
 兼容 Auth.js、Better Auth、Clerk 或任何自建后端。
 
-[![npm](https://img.shields.io/npm/v/@swr-login/core?color=blue)](https://www.npmjs.com/package/@swr-login/core)
-[![bundle size](https://img.shields.io/bundlephobia/minzip/@swr-login/core?label=core%20size)](https://bundlephobia.com/package/@swr-login/core)
+[![npm](https://img.shields.io/npm/v/swr-login?color=blue)](https://www.npmjs.com/package/swr-login)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/swr-login?label=size)](https://bundlephobia.com/package/swr-login)
 [![license](https://img.shields.io/github/license/swr-login/swr-login)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue)](https://www.typescriptlang.org/)
 
@@ -42,22 +42,21 @@
 ### 安装
 
 ```bash
-# 安装核心 + React 绑定 + JWT 适配器 + 密码登录插件
-npm install @swr-login/react @swr-login/adapter-jwt @swr-login/plugin-password
+npm install swr-login react swr
 ```
 
 也支持 pnpm / yarn / bun：
 
 ```bash
-pnpm add @swr-login/react @swr-login/adapter-jwt @swr-login/plugin-password
+pnpm add swr-login react swr
 ```
 
 ### 基本用法
 
 ```tsx
-import { SWRLoginProvider, useLogin, useUser, useLogout } from '@swr-login/react';
-import { JWTAdapter } from '@swr-login/adapter-jwt';
-import { PasswordPlugin } from '@swr-login/plugin-password';
+import { SWRLoginProvider, useLogin, useUser, useLogout } from 'swr-login';
+import { JWTAdapter } from 'swr-login/adapters/jwt';
+import { PasswordPlugin } from 'swr-login/plugins/password';
 
 // 1️⃣ 配置 Provider
 function App() {
@@ -161,20 +160,20 @@ function LoginButton() {
 
 | 包名 | 登录方式 | 认证方法 |
 |------|---------|---------|
-| `@swr-login/plugin-password` | 用户名/密码 | 表单 POST |
-| `@swr-login/plugin-oauth-google` | Google | OAuth 2.0 + PKCE（弹窗/跳转） |
-| `@swr-login/plugin-oauth-github` | GitHub | OAuth（弹窗/跳转） |
-| `@swr-login/plugin-oauth-wechat` | 微信 | 扫码登录 / H5 网页授权 |
-| `@swr-login/plugin-passkey` | Passkey/WebAuthn | 生物识别 / 安全密钥 |
+| `swr-login/plugins/password` | 用户名/密码 | 表单 POST |
+| `swr-login/plugins/oauth-google` | Google | OAuth 2.0 + PKCE（弹窗/跳转） |
+| `swr-login/plugins/oauth-github` | GitHub | OAuth（弹窗/跳转） |
+| `swr-login/plugins/oauth-wechat` | 微信 | 扫码登录 / H5 网页授权 |
+| `swr-login/plugins/passkey` | Passkey/WebAuthn | 生物识别 / 安全密钥 |
 
 ### 多渠道组合使用
 
 ```tsx
-import { PasswordPlugin } from '@swr-login/plugin-password';
-import { GoogleOAuthPlugin } from '@swr-login/plugin-oauth-google';
-import { GitHubOAuthPlugin } from '@swr-login/plugin-oauth-github';
-import { WeChatOAuthPlugin } from '@swr-login/plugin-oauth-wechat';
-import { PasskeyPlugin } from '@swr-login/plugin-passkey';
+import { PasswordPlugin } from 'swr-login/plugins/password';
+import { GoogleOAuthPlugin } from 'swr-login/plugins/oauth-google';
+import { GitHubOAuthPlugin } from 'swr-login/plugins/oauth-github';
+import { WeChatOAuthPlugin } from 'swr-login/plugins/oauth-wechat';
+import { PasskeyPlugin } from 'swr-login/plugins/passkey';
 
 <SWRLoginProvider
   config={{
@@ -222,16 +221,16 @@ const { login: passkeyLogin } = useLogin('passkey');
 
 | 包名 | 存储策略 | 适用场景 |
 |------|---------|---------|
-| `@swr-login/adapter-jwt` | localStorage / sessionStorage / memory | SPA 应用（默认推荐） |
-| `@swr-login/adapter-session` | sessionStorage | 标签页级会话（关闭即清除） |
-| `@swr-login/adapter-cookie` | Cookie (SameSite + Secure) | BFF 模式（HttpOnly 存储） |
+| `swr-login/adapters/jwt` | localStorage / sessionStorage / memory | SPA 应用（默认推荐） |
+| `swr-login/adapters/session` | sessionStorage | 标签页级会话（关闭即清除） |
+| `swr-login/adapters/cookie` | Cookie (SameSite + Secure) | BFF 模式（HttpOnly 存储） |
 
 ## 自定义插件
 
 几分钟内即可编写自己的登录渠道插件：
 
 ```ts
-import type { SWRLoginPlugin } from '@swr-login/core';
+import type { SWRLoginPlugin } from 'swr-login';
 
 const MySSOPlugin: SWRLoginPlugin<{ token: string }> = {
   name: 'my-sso',
@@ -274,7 +273,7 @@ const MySSOPlugin: SWRLoginPlugin<{ token: string }> = {
 // src/components/providers.tsx
 'use client';
 
-import { SWRLoginProvider } from '@swr-login/react';
+import { SWRLoginProvider } from 'swr-login';
 import { authConfig } from '@/lib/auth-config';
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -352,10 +351,25 @@ pnpm --filter example-nextjs-app-router dev
 - **跨标签页同步登出** — 通过 BroadcastChannel 广播，一个标签页登出，所有标签页同步
 - **Token 自动清理** — 页面可见性变化时自动清理过期 Token（可选）
 
+## 按需安装（Fine-grained Imports）
+
+如果你希望只安装需要的子包，所有 scoped 包均可独立使用：
+
+```bash
+npm install @swr-login/react @swr-login/adapter-jwt @swr-login/plugin-password
+```
+
+```ts
+import { SWRLoginProvider, useLogin } from '@swr-login/react';
+import { JWTAdapter } from '@swr-login/adapter-jwt';
+import { PasswordPlugin } from '@swr-login/plugin-password';
+```
+
 ## 包列表
 
 | 包名 | 描述 | 版本 |
 |------|------|------|
+| [`swr-login`](./packages/swr-login) | **推荐入口** — 统一导出 core + react，含 adapters/plugins 子路径 | ![npm](https://img.shields.io/npm/v/swr-login?label=) |
 | [`@swr-login/core`](./packages/core) | 核心逻辑：状态机、Token 管理、插件系统、事件总线 | ![npm](https://img.shields.io/npm/v/@swr-login/core?label=) |
 | [`@swr-login/react`](./packages/react) | React 绑定：Provider、Hooks、AuthGuard 组件 | ![npm](https://img.shields.io/npm/v/@swr-login/react?label=) |
 | [`@swr-login/adapter-jwt`](./packages/adapter-jwt) | JWT Token 存储适配器 | ![npm](https://img.shields.io/npm/v/@swr-login/adapter-jwt?label=) |
@@ -394,6 +408,7 @@ pnpm lint:fix
 ```
 swr-login/
 ├── packages/
+│   ├── swr-login/             # 统一入口包（推荐）
 │   ├── core/                  # 核心逻辑（状态机、Token 管理、插件系统）
 │   ├── react/                 # React 绑定（Provider、Hooks、AuthGuard）
 │   ├── adapter-jwt/           # JWT 存储适配器
