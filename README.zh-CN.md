@@ -55,21 +55,17 @@ pnpm add swr-login react swr
 
 ```tsx
 import { SWRLoginProvider, useLogin, useUser, useLogout } from 'swr-login';
-import { JWTAdapter } from 'swr-login/adapters/jwt';
-import { PasswordPlugin } from 'swr-login/plugins/password';
+import { presets } from 'swr-login/presets';
 
-// 1️⃣ 配置 Provider
+// 1️⃣ 一行配置，使用预设
+const config = presets.password({
+  loginUrl: '/api/login',
+  userUrl: '/api/me',
+});
+
 function App() {
   return (
-    <SWRLoginProvider
-      config={{
-        adapter: JWTAdapter(),
-        plugins: [PasswordPlugin({ loginUrl: '/api/login' })],
-        fetchUser: (token) =>
-          fetch('/api/me', { headers: { Authorization: `Bearer ${token}` } })
-            .then(r => r.json()),
-      }}
-    >
+    <SWRLoginProvider config={config}>
       <MyApp />
     </SWRLoginProvider>
   );
@@ -124,6 +120,128 @@ function LoginButton() {
 │   存储适配器                                          │
 │   JWT · Session · Cookie (BFF)                       │
 └─────────────────────────────────────────────────────┘
+```
+
+## 预设配置（Presets）
+
+预设为常见认证场景提供开箱即用的配置，只需提供必要参数即可：
+
+### 密码登录
+
+```ts
+import { presets } from 'swr-login/presets';
+
+const config = presets.password({
+  loginUrl: '/api/auth/login',
+  logoutUrl: '/api/auth/logout',
+  userUrl: '/api/me',
+});
+```
+
+### 社交登录（OAuth）
+
+```ts
+const config = presets.social({
+  providers: {
+    github: { clientId: 'your-github-client-id' },
+    google: { clientId: 'your-google-client-id' },
+    wechat: { appId: 'wx_your_app_id' },
+  },
+  userUrl: '/api/me',
+});
+```
+
+### Passkey（WebAuthn）
+
+```ts
+const config = presets.passkey({
+  registerOptionsUrl: '/api/auth/passkey/register/options',
+  registerVerifyUrl: '/api/auth/passkey/register/verify',
+  loginOptionsUrl: '/api/auth/passkey/login/options',
+  loginVerifyUrl: '/api/auth/passkey/login/verify',
+  userUrl: '/api/me',
+});
+```
+
+### 完整方案（密码 + 社交 + Passkey）
+
+```ts
+const config = presets.full({
+  password: { loginUrl: '/api/auth/login' },
+  providers: {
+    github: { clientId: 'gh-client-id' },
+    google: { clientId: 'google-client-id' },
+  },
+  passkey: {
+    registerOptionsUrl: '/api/auth/passkey/register/options',
+    registerVerifyUrl: '/api/auth/passkey/register/verify',
+    loginOptionsUrl: '/api/auth/passkey/login/options',
+    loginVerifyUrl: '/api/auth/passkey/login/verify',
+  },
+  userUrl: '/api/me',
+});
+```
+
+所有预设都支持额外选项：`onLogin`、`onLogout`、`onError`、`security`、`adapterOptions` 等。
+
+## `createAuthConfig` 辅助函数
+
+对于高级用法，使用 `createAuthConfig` 手动构建配置时可获得完整的类型推导和 IDE 自动补全：
+
+```ts
+// auth.config.ts
+import { createAuthConfig } from 'swr-login';
+import { JWTAdapter } from 'swr-login/adapters/jwt';
+import { PasswordPlugin } from 'swr-login/plugins/password';
+
+export default createAuthConfig({
+  adapter: JWTAdapter({ storage: 'localStorage' }),
+  plugins: [PasswordPlugin({ loginUrl: '/api/auth/login' })],
+  fetchUser: (token) =>
+    fetch('/api/me', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json()),
+  onLogin: (user) => console.log('已登录:', user.name),
+});
+```
+
+```tsx
+// App.tsx
+import { SWRLoginProvider } from 'swr-login';
+import authConfig from './auth.config';
+
+function App() {
+  return (
+    <SWRLoginProvider config={authConfig}>
+      <MyApp />
+    </SWRLoginProvider>
+  );
+}
+```
+
+## 高级用法：手动配置
+
+如果预设无法满足需求，你可以手动组装 adapter 和 plugins：
+
+```tsx
+import { SWRLoginProvider } from 'swr-login';
+import { JWTAdapter } from 'swr-login/adapters/jwt';
+import { PasswordPlugin } from 'swr-login/plugins/password';
+
+function App() {
+  return (
+    <SWRLoginProvider
+      config={{
+        adapter: JWTAdapter(),
+        plugins: [PasswordPlugin({ loginUrl: '/api/login' })],
+        fetchUser: (token) =>
+          fetch('/api/me', { headers: { Authorization: `Bearer ${token}` } })
+            .then(r => r.json()),
+      }}
+    >
+      <MyApp />
+    </SWRLoginProvider>
+  );
+}
 ```
 
 ## 核心 Hooks

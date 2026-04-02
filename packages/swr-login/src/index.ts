@@ -25,6 +25,8 @@ export {
   TokenManager,
   PluginManager,
   BroadcastSync,
+  // Config Helpers
+  createAuthConfig,
   // Security Utilities
   generatePKCE,
   storePKCEVerifier,
@@ -90,3 +92,17 @@ export type {
   AuthGuardProps,
   AuthContextValue,
 } from '@swr-login/react';
+
+// ─── Presets ──────────────────────────────────────────────────
+export { presets } from './presets';
+
+export type {
+  BasePresetOptions,
+  PasswordPresetOptions,
+  SocialPresetOptions,
+  SocialProviders,
+  PasskeyPresetOptions,
+  FullPresetOptions,
+  FullPasswordConfig,
+  FullPasskeyConfig,
+} from './presets';

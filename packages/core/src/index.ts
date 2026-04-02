@@ -43,6 +43,9 @@ export { generatePKCE, storePKCEVerifier, retrievePKCEVerifier } from './securit
 export type { PKCECodePair } from './security/pkce';
 export { generateCSRFState, validateCSRFState, clearCSRFStates } from './security/csrf';
 
+// ─── Config Helpers ───────────────────────────────────────────
+export { createAuthConfig } from './create-auth-config';
+
 // ─── Utilities ────────────────────────────────────────────────
 export {
   generateRandomString,

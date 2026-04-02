@@ -35,21 +35,17 @@ npm install swr-login react swr
 
 ```tsx
 import { SWRLoginProvider, useLogin, useUser, useLogout } from 'swr-login';
-import { JWTAdapter } from 'swr-login/adapters/jwt';
-import { PasswordPlugin } from 'swr-login/plugins/password';
+import { presets } from 'swr-login/presets';
 
-// 1. Configure provider
+// 1. One-line config with presets
+const config = presets.password({
+  loginUrl: '/api/login',
+  userUrl: '/api/me',
+});
+
 function App() {
   return (
-    <SWRLoginProvider
-      config={{
-        adapter: JWTAdapter(),
-        plugins: [PasswordPlugin({ loginUrl: '/api/login' })],
-        fetchUser: (token) =>
-          fetch('/api/me', { headers: { Authorization: `Bearer ${token}` } })
-            .then(r => r.json()),
-      }}
-    >
+    <SWRLoginProvider config={config}>
       <MyApp />
     </SWRLoginProvider>
   );
@@ -104,6 +100,102 @@ function LoginButton() {
 │   Storage Adapters                                   │
 │   JWT · Session · Cookie (BFF)                       │
 └─────────────────────────────────────────────────────┘
+```
+
+## Presets
+
+Presets provide ready-to-use configurations for common auth scenarios. Just provide the essential parameters:
+
+### Password Login
+
+```ts
+import { presets } from 'swr-login/presets';
+
+const config = presets.password({
+  loginUrl: '/api/auth/login',
+  logoutUrl: '/api/auth/logout',
+  userUrl: '/api/me',
+});
+```
+
+### Social Login (OAuth)
+
+```ts
+const config = presets.social({
+  providers: {
+    github: { clientId: 'your-github-client-id' },
+    google: { clientId: 'your-google-client-id' },
+    wechat: { appId: 'wx_your_app_id' },
+  },
+  userUrl: '/api/me',
+});
+```
+
+### Passkey (WebAuthn)
+
+```ts
+const config = presets.passkey({
+  registerOptionsUrl: '/api/auth/passkey/register/options',
+  registerVerifyUrl: '/api/auth/passkey/register/verify',
+  loginOptionsUrl: '/api/auth/passkey/login/options',
+  loginVerifyUrl: '/api/auth/passkey/login/verify',
+  userUrl: '/api/me',
+});
+```
+
+### Full (Password + Social + Passkey)
+
+```ts
+const config = presets.full({
+  password: { loginUrl: '/api/auth/login' },
+  providers: {
+    github: { clientId: 'gh-client-id' },
+    google: { clientId: 'google-client-id' },
+  },
+  passkey: {
+    registerOptionsUrl: '/api/auth/passkey/register/options',
+    registerVerifyUrl: '/api/auth/passkey/register/verify',
+    loginOptionsUrl: '/api/auth/passkey/login/options',
+    loginVerifyUrl: '/api/auth/passkey/login/verify',
+  },
+  userUrl: '/api/me',
+});
+```
+
+All presets support extra options like `onLogin`, `onLogout`, `onError`, `security`, and `adapterOptions`.
+
+## `createAuthConfig`
+
+For advanced use cases, use `createAuthConfig` to get full type-safety and IDE auto-completion when building config manually:
+
+```ts
+// auth.config.ts
+import { createAuthConfig } from 'swr-login';
+import { JWTAdapter } from 'swr-login/adapters/jwt';
+import { PasswordPlugin } from 'swr-login/plugins/password';
+
+export default createAuthConfig({
+  adapter: JWTAdapter({ storage: 'localStorage' }),
+  plugins: [PasswordPlugin({ loginUrl: '/api/auth/login' })],
+  fetchUser: (token) =>
+    fetch('/api/me', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json()),
+  onLogin: (user) => console.log('Logged in:', user.name),
+});
+```
+
+```tsx
+// App.tsx
+import { SWRLoginProvider } from 'swr-login';
+import authConfig from './auth.config';
+
+function App() {
+  return (
+    <SWRLoginProvider config={authConfig}>
+      <MyApp />
+    </SWRLoginProvider>
+  );
+}
 ```
 
 ## Core Hooks

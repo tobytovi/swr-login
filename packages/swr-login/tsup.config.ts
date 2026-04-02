@@ -3,6 +3,7 @@ import { defineConfig } from 'tsup';
 export default defineConfig({
   entry: {
     index: 'src/index.ts',
+    presets: 'src/presets/index.ts',
     'adapters/jwt': 'src/adapters/jwt.ts',
     'adapters/cookie': 'src/adapters/cookie.ts',
     'adapters/session': 'src/adapters/session.ts',

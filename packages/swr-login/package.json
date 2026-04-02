@@ -17,6 +17,16 @@
         "default": "./dist/index.cjs"
       }
     },
+    "./presets": {
+      "import": {
+        "types": "./dist/presets.d.ts",
+        "default": "./dist/presets.js"
+      },
+      "require": {
+        "types": "./dist/presets.d.cts",
+        "default": "./dist/presets.cjs"
+      }
+    },
     "./adapters/jwt": {
       "import": {
         "types": "./dist/adapters/jwt.d.ts",
@@ -103,6 +113,7 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
+    "test": "vitest run",
     "clean": "rm -rf dist"
   },
   "dependencies": {
