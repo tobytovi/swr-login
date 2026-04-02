@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { createAuthConfig } from '../create-auth-config';
-import type { SWRLoginConfig, TokenAdapter, SWRLoginPlugin } from '../types';
+import type { SWRLoginConfig, SWRLoginPlugin, TokenAdapter } from '../types';
 
 // 模拟 TokenAdapter
 const mockAdapter: TokenAdapter = {

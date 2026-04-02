@@ -1,5 +1,5 @@
-import type { SWRLoginConfig } from '@swr-login/core';
 import { JWTAdapter } from '@swr-login/adapter-jwt';
+import type { SWRLoginConfig } from '@swr-login/core';
 import { PasskeyPlugin } from '@swr-login/plugin-passkey';
 import { type BasePresetOptions, resolveBaseOptions } from './utils';
 

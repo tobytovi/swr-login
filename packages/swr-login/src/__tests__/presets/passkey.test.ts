@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { passkey } from '../../presets/passkey';
 
 // Mock 依赖模块
@@ -45,7 +45,7 @@ describe('presets.passkey', () => {
   it('应将所有 URL 参数传递给 PasskeyPlugin', () => {
     const config = passkey(basePasskeyOptions);
 
-    const plugin = config.plugins[0] as any;
+    const plugin = config.plugins[0] as unknown as { _options: Record<string, unknown> };
     expect(plugin._options.registerOptionsUrl).toBe('/api/auth/passkey/register/options');
     expect(plugin._options.registerVerifyUrl).toBe('/api/auth/passkey/register/verify');
     expect(plugin._options.loginOptionsUrl).toBe('/api/auth/passkey/login/options');
@@ -58,7 +58,7 @@ describe('presets.passkey', () => {
       rpId: 'example.com',
     });
 
-    const plugin = config.plugins[0] as any;
+    const plugin = config.plugins[0] as unknown as { _options: Record<string, unknown> };
     expect(plugin._options.rpId).toBe('example.com');
   });
 
@@ -96,7 +96,7 @@ describe('presets.passkey', () => {
       adapterOptions: { storage: 'memory' },
     });
 
-    const adapter = config.adapter as any;
+    const adapter = config.adapter as unknown as { _options: Record<string, unknown> };
     expect(adapter._options).toEqual({ storage: 'memory' });
   });
 

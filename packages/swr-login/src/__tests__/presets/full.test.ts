@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { full } from '../../presets/full';
 
 // Mock 依赖模块
@@ -147,7 +147,7 @@ describe('presets.full', () => {
       },
     });
 
-    const plugin = config.plugins[0] as any;
+    const plugin = config.plugins[0] as unknown as { _options: Record<string, unknown> };
     expect(plugin._options.loginUrl).toBe('/api/auth/login');
     expect(plugin._options.logoutUrl).toBe('/api/auth/logout');
   });
@@ -163,7 +163,7 @@ describe('presets.full', () => {
       },
     });
 
-    const plugin = config.plugins[0] as any;
+    const plugin = config.plugins[0] as unknown as { _options: Record<string, unknown> };
     expect(plugin._options.rpId).toBe('example.com');
   });
 
@@ -211,7 +211,7 @@ describe('presets.full', () => {
       adapterOptions: { storage: 'sessionStorage' },
     });
 
-    const adapter = config.adapter as any;
+    const adapter = config.adapter as unknown as { _options: Record<string, unknown> };
     expect(adapter._options).toEqual({ storage: 'sessionStorage' });
   });
 });

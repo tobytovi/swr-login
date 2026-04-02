@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { password } from '../../presets/password';
 
 // Mock 依赖模块
@@ -43,7 +43,7 @@ describe('presets.password', () => {
       logoutUrl: '/api/auth/logout',
     });
 
-    const plugin = config.plugins[0] as any;
+    const plugin = config.plugins[0] as unknown as { _options: Record<string, unknown> };
     expect(plugin._options.loginUrl).toBe('/api/auth/login');
     expect(plugin._options.logoutUrl).toBe('/api/auth/logout');
   });
@@ -54,7 +54,7 @@ describe('presets.password', () => {
       adapterOptions: { storage: 'sessionStorage' },
     });
 
-    const adapter = config.adapter as any;
+    const adapter = config.adapter as unknown as { _options: Record<string, unknown> };
     expect(adapter._options).toEqual({ storage: 'sessionStorage' });
   });
 
@@ -108,7 +108,7 @@ describe('presets.password', () => {
   });
 
   it('应将 fetchOptions 和 transformResponse 传递给 PasswordPlugin', () => {
-    const transformResponse = (data: unknown) => data as any;
+    const transformResponse = (data: unknown) => data as Record<string, unknown>;
 
     const config = password({
       loginUrl: '/api/auth/login',
@@ -116,7 +116,7 @@ describe('presets.password', () => {
       transformResponse,
     });
 
-    const plugin = config.plugins[0] as any;
+    const plugin = config.plugins[0] as unknown as { _options: Record<string, unknown> };
     expect(plugin._options.fetchOptions).toEqual({ credentials: 'include' });
     expect(plugin._options.transformResponse).toBe(transformResponse);
   });

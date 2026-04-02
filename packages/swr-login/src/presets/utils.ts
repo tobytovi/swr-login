@@ -1,5 +1,5 @@
-import type { SWRLoginConfig, User } from '@swr-login/core';
 import type { JWTAdapterOptions } from '@swr-login/adapter-jwt';
+import type { SWRLoginConfig, User } from '@swr-login/core';
 
 /**
  * Preset 基础选项接口。
@@ -54,9 +54,7 @@ export function createFetchUser(userUrl: string): (token: string) => Promise<Use
  *
  * @internal
  */
-export function resolveBaseOptions(
-  options: BasePresetOptions,
-): Partial<SWRLoginConfig> {
+export function resolveBaseOptions(options: BasePresetOptions): Partial<SWRLoginConfig> {
   const { userUrl, fetchUser, onLogin, onLogout, onError, security, cacheAdapter } = options;
 
   const resolved: Partial<SWRLoginConfig> = {};

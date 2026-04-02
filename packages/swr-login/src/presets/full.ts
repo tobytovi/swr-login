@@ -1,13 +1,13 @@
-import type { SWRLoginConfig, SWRLoginPlugin, AuthResponse } from '@swr-login/core';
-import type { GitHubOAuthPluginOptions } from '@swr-login/plugin-oauth-github';
-import type { GoogleOAuthPluginOptions } from '@swr-login/plugin-oauth-google';
-import type { WeChatPluginOptions } from '@swr-login/plugin-oauth-wechat';
 import { JWTAdapter } from '@swr-login/adapter-jwt';
-import { PasswordPlugin } from '@swr-login/plugin-password';
+import type { AuthResponse, SWRLoginConfig, SWRLoginPlugin } from '@swr-login/core';
+import type { GitHubOAuthPluginOptions } from '@swr-login/plugin-oauth-github';
 import { GitHubOAuthPlugin } from '@swr-login/plugin-oauth-github';
+import type { GoogleOAuthPluginOptions } from '@swr-login/plugin-oauth-google';
 import { GoogleOAuthPlugin } from '@swr-login/plugin-oauth-google';
+import type { WeChatPluginOptions } from '@swr-login/plugin-oauth-wechat';
 import { WeChatPlugin } from '@swr-login/plugin-oauth-wechat';
 import { PasskeyPlugin } from '@swr-login/plugin-passkey';
+import { PasswordPlugin } from '@swr-login/plugin-password';
 import { type BasePresetOptions, resolveBaseOptions } from './utils';
 
 /**
@@ -110,7 +110,13 @@ export interface FullPresetOptions extends BasePresetOptions {
  * ```
  */
 export function full(options: FullPresetOptions): SWRLoginConfig {
-  const { password: passwordConfig, providers, passkey: passkeyConfig, adapterOptions, ...baseOptions } = options;
+  const {
+    password: passwordConfig,
+    providers,
+    passkey: passkeyConfig,
+    adapterOptions,
+    ...baseOptions
+  } = options;
 
   const plugins: SWRLoginPlugin[] = [];
 

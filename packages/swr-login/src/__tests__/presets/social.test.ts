@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { social } from '../../presets/social';
 
 // Mock 依赖模块
@@ -86,7 +86,7 @@ describe('presets.social', () => {
       },
     });
 
-    const plugin = config.plugins[0] as any;
+    const plugin = config.plugins[0] as unknown as { _options: Record<string, unknown> };
     expect(plugin._options.clientId).toBe('gh-client-id');
     expect(plugin._options.tokenEndpoint).toBe('/api/auth/github/callback');
     expect(plugin._options.redirectUri).toBe('http://localhost:3000/callback');
@@ -139,7 +139,7 @@ describe('presets.social', () => {
       adapterOptions: { storage: 'memory', prefix: 'myapp' },
     });
 
-    const adapter = config.adapter as any;
+    const adapter = config.adapter as unknown as { _options: Record<string, unknown> };
     expect(adapter._options).toEqual({ storage: 'memory', prefix: 'myapp' });
   });
 });

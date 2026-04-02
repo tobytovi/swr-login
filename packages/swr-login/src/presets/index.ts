@@ -24,10 +24,10 @@
  * ```
  */
 
+import { full } from './full';
+import { passkey } from './passkey';
 import { password } from './password';
 import { social } from './social';
-import { passkey } from './passkey';
-import { full } from './full';
 
 // ─── Types ────────────────────────────────────────────────────
 export type { BasePresetOptions } from './utils';

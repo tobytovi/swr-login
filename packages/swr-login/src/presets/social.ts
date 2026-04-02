@@ -1,10 +1,10 @@
+import { JWTAdapter } from '@swr-login/adapter-jwt';
 import type { SWRLoginConfig, SWRLoginPlugin } from '@swr-login/core';
 import type { GitHubOAuthPluginOptions } from '@swr-login/plugin-oauth-github';
-import type { GoogleOAuthPluginOptions } from '@swr-login/plugin-oauth-google';
-import type { WeChatPluginOptions } from '@swr-login/plugin-oauth-wechat';
-import { JWTAdapter } from '@swr-login/adapter-jwt';
 import { GitHubOAuthPlugin } from '@swr-login/plugin-oauth-github';
+import type { GoogleOAuthPluginOptions } from '@swr-login/plugin-oauth-google';
 import { GoogleOAuthPlugin } from '@swr-login/plugin-oauth-google';
+import type { WeChatPluginOptions } from '@swr-login/plugin-oauth-wechat';
 import { WeChatPlugin } from '@swr-login/plugin-oauth-wechat';
 import { type BasePresetOptions, resolveBaseOptions } from './utils';
 

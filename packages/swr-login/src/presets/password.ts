@@ -1,5 +1,5 @@
-import type { SWRLoginConfig, AuthResponse } from '@swr-login/core';
 import { JWTAdapter } from '@swr-login/adapter-jwt';
+import type { AuthResponse, SWRLoginConfig } from '@swr-login/core';
 import { PasswordPlugin } from '@swr-login/plugin-password';
 import { type BasePresetOptions, resolveBaseOptions } from './utils';
 
@@ -61,14 +61,8 @@ export interface PasswordPresetOptions extends BasePresetOptions {
  * ```
  */
 export function password(options: PasswordPresetOptions): SWRLoginConfig {
-  const {
-    loginUrl,
-    logoutUrl,
-    fetchOptions,
-    transformResponse,
-    adapterOptions,
-    ...baseOptions
-  } = options;
+  const { loginUrl, logoutUrl, fetchOptions, transformResponse, adapterOptions, ...baseOptions } =
+    options;
 
   const baseConfig = resolveBaseOptions(baseOptions);
 
