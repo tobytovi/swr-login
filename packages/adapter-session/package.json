@@ -1,6 +1,6 @@
 {
   "name": "@swr-login/adapter-session",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Session storage adapter for swr-login (auto-clears when tab closes)",
   "type": "module",
   "main": "./dist/index.cjs",
