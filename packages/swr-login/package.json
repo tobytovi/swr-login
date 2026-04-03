@@ -108,10 +108,10 @@
       }
     }
   },
-  "files": ["dist"],
+  "files": ["dist", "README.md"],
   "sideEffects": false,
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && cp ../../README.md ./README.md",
     "dev": "tsup --watch",
     "test": "vitest run",
     "clean": "rm -rf dist"

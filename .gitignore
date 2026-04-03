@@ -35,3 +35,6 @@ pnpm-debug.log*
 # Project specific
 .issues/
 .codebuddy/
+
+# Auto-generated (copied from root during build)
+packages/swr-login/README.md
