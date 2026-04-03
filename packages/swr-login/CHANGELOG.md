@@ -1,5 +1,15 @@
 # swr-login
 
+## 0.2.2
+
+### Patch Changes
+
+- fix: 补全聚合包遗漏的多步骤登录相关导出
+
+  - 新增值导出：`useMultiStepLogin`、`useAuthInjector`、`isMultiStepPlugin`
+  - 新增类型导出：`UseMultiStepLoginReturn`、`LoginStep`、`MultiStepLoginPlugin`、`AuthInjector`
+  - 修复消费方 `import { useMultiStepLogin } from 'swr-login'` 报 "Export doesn't exist" 的问题
+
 ## 0.2.1
 
 ### Patch Changes

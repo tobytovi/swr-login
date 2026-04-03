@@ -34,6 +34,8 @@ export {
   generateCSRFState,
   validateCSRFState,
   clearCSRFStates,
+  // Multi-step
+  isMultiStepPlugin,
   // Utilities
   generateRandomString,
   base64urlEncode,
@@ -61,6 +63,10 @@ export type {
   BroadcastMessage,
   RefreshFunction,
   PKCECodePair,
+  // Multi-step types
+  LoginStep,
+  MultiStepLoginPlugin,
+  AuthInjector,
 } from '@swr-login/core';
 
 // ─── React (Provider, Hooks, Components) ──────────────────────
@@ -69,6 +75,8 @@ export {
   SWRLoginProvider,
   // Hooks
   useLogin,
+  useMultiStepLogin,
+  useAuthInjector,
   useUser,
   AUTH_KEY,
   useLogout,
@@ -84,6 +92,7 @@ export type {
   SWRLoginProviderProps,
   UseLoginReturn,
   UseLoginOptions,
+  UseMultiStepLoginReturn,
   UseUserReturn,
   UseLogoutReturn,
   UseLogoutOptions,
