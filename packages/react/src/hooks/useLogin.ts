@@ -1,4 +1,5 @@
 import type { AuthResponse } from '@swr-login/core';
+import { isMultiStepPlugin } from '@swr-login/core';
 import { useCallback, useState } from 'react';
 import { useAuthContext } from '../context';
 
@@ -70,6 +71,18 @@ export function useLogin<TCredentials = unknown>(
       setIsLoading(true);
       setError(null);
       stateMachine.transition('authenticating');
+
+      // 检查是否为多步骤插件，给出友好错误提示
+      const targetPlugin = pluginManager.getPlugin(resolvedPlugin);
+      if (targetPlugin && isMultiStepPlugin(targetPlugin)) {
+        const err = new Error(
+          `[swr-login] Plugin "${resolvedPlugin}" is a multi-step plugin. Use useMultiStepLogin() instead of useLogin() for multi-step login flows.`,
+        );
+        setError(err);
+        stateMachine.transition('error');
+        setIsLoading(false);
+        throw err;
+      }
 
       try {
         const response = await pluginManager.login(resolvedPlugin, resolvedCredentials);

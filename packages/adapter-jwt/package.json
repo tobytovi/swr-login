@@ -1,6 +1,6 @@
 {
   "name": "@swr-login/adapter-jwt",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "JWT token storage adapter for swr-login (localStorage/sessionStorage/memory)",
   "type": "module",
   "main": "./dist/index.cjs",

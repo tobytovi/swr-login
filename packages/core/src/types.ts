@@ -62,7 +62,14 @@ export interface AuthResponse {
 // ─── Plugin System ───────────────────────────────────────────
 
 /** Plugin type categories */
-export type PluginType = 'password' | 'oauth' | 'otp' | 'magic-link' | 'web3' | 'passkey';
+export type PluginType =
+  | 'password'
+  | 'oauth'
+  | 'otp'
+  | 'magic-link'
+  | 'web3'
+  | 'passkey'
+  | 'multi-step';
 
 /** Context passed to plugins during lifecycle methods */
 export interface PluginContext {
@@ -113,6 +120,85 @@ export interface SWRLoginPlugin<TCredentials = unknown> {
   login(credentials: TCredentials, ctx: PluginContext): Promise<AuthResponse>;
   /** Optional logout (e.g., clear third-party session) */
   logout?(ctx: PluginContext): Promise<void>;
+}
+
+// ─── Multi-Step Plugin ────────────────────────────────────────
+
+/**
+ * 单个登录步骤定义。
+ * 每个步骤接收上一步的输出（或初始凭证）作为输入，返回数据传递给 UI 或下一步。
+ *
+ * @typeParam TInput - 步骤输入类型
+ * @typeParam TOutput - 步骤输出类型
+ */
+export interface LoginStep<TInput = unknown, TOutput = unknown> {
+  /** 步骤唯一名称，用于 UI 路由（如 'verify-code'、'select-student'） */
+  name: string;
+  /** 执行步骤逻辑 */
+  execute(input: TInput, ctx: PluginContext): Promise<TOutput>;
+}
+
+/**
+ * 多步骤登录插件接口。
+ * 支持声明式定义多步骤流程，每个步骤之间可以有 UI 交互和页面跳转。
+ *
+ * 适用场景：班级码登录、MFA、短信验证码、企业 SSO + 部门选择等。
+ *
+ * @typeParam TInitialInput - 第一步的输入类型（初始凭证）
+ *
+ * @example
+ * ```ts
+ * const classCodePlugin: MultiStepLoginPlugin<{ classCode: string }> = {
+ *   name: 'class-code',
+ *   type: 'multi-step',
+ *   steps: [
+ *     { name: 'verify-code', execute: async (input, ctx) => { ... } },
+ *     { name: 'select-student', execute: async (input, ctx) => { ... } },
+ *     { name: 'get-token', execute: async (input, ctx) => { ... } },
+ *   ],
+ *   async finalizeAuth(lastStepOutput, ctx) { ... },
+ *   async login(credentials, ctx) {
+ *     throw new Error('Use useMultiStepLogin() for multi-step plugins');
+ *   },
+ * };
+ * ```
+ */
+export interface MultiStepLoginPlugin<TInitialInput = unknown>
+  extends SWRLoginPlugin<TInitialInput> {
+  type: 'multi-step';
+  /** 声明所有步骤（按顺序执行） */
+  steps: LoginStep[];
+  /**
+   * 最终步骤完成后，将结果转换为 AuthResponse。
+   * 如果不提供，则最后一个步骤的输出必须符合 AuthResponse 格式。
+   */
+  finalizeAuth?(lastStepOutput: unknown, ctx: PluginContext): Promise<AuthResponse>;
+}
+
+/**
+ * 类型守卫：判断插件是否为多步骤插件。
+ */
+export function isMultiStepPlugin(plugin: SWRLoginPlugin): plugin is MultiStepLoginPlugin {
+  return plugin.type === 'multi-step' && 'steps' in plugin;
+}
+
+// ─── Auth Injector ───────────────────────────────────────────
+
+/**
+ * 从外部注入登录态到 swr-login 体系。
+ * 适用于多步骤登录、第三方 SDK 登录等无法通过插件 login() 完成的场景。
+ */
+export interface AuthInjector {
+  /**
+   * 注入外部登录态，使 swr-login 全局状态感知到登录。
+   * 会自动触发 token 存储、状态机转换、事件发射和缓存更新。
+   */
+  injectAuth(response: AuthResponse): Promise<void>;
+
+  /**
+   * 从外部触发登出，清除所有登录态。
+   */
+  injectLogout(): Promise<void>;
 }
 
 // ─── Cache Adapter ───────────────────────────────────────────

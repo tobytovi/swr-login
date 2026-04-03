@@ -7,6 +7,9 @@ export type {
   PluginType,
   PluginContext,
   SWRLoginPlugin,
+  LoginStep,
+  MultiStepLoginPlugin,
+  AuthInjector,
   CacheAdapter,
   TokenAdapter,
   SWRLoginConfig,
@@ -16,6 +19,7 @@ export type {
   BroadcastMessageType,
   BroadcastMessage,
 } from './types';
+export { isMultiStepPlugin } from './types';
 
 // ─── Errors ───────────────────────────────────────────────────
 export {
@@ -25,9 +29,12 @@ export {
   TokenRefreshError,
   PluginNotFoundError,
   PluginInitError,
+  PluginTypeMismatchError,
   InvalidCredentialsError,
   CSRFError,
   OAuthPopupError,
+  StepExecutionError,
+  StepOutOfRangeError,
 } from './errors';
 
 // ─── Core Classes ─────────────────────────────────────────────

@@ -6,6 +6,11 @@ export type { SWRLoginProviderProps } from './provider';
 export { useLogin } from './hooks/useLogin';
 export type { UseLoginReturn, UseLoginOptions } from './hooks/useLogin';
 
+export { useMultiStepLogin } from './hooks/useMultiStepLogin';
+export type { UseMultiStepLoginReturn } from './hooks/useMultiStepLogin';
+
+export { useAuthInjector } from './hooks/useAuthInjector';
+
 export { useUser, AUTH_KEY } from './hooks/useUser';
 export type { UseUserReturn } from './hooks/useUser';
 

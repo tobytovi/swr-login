@@ -98,3 +98,55 @@ export class OAuthPopupError extends AuthError {
     Object.setPrototypeOf(this, OAuthPopupError.prototype);
   }
 }
+
+/** Thrown when a plugin type does not match the expected type */
+export class PluginTypeMismatchError extends AuthError {
+  public readonly pluginName: string;
+
+  constructor(pluginName: string, expectedType: string) {
+    super(`Plugin "${pluginName}" is not a ${expectedType} plugin`, 'PLUGIN_TYPE_MISMATCH');
+    this.name = 'PluginTypeMismatchError';
+    this.pluginName = pluginName;
+    Object.setPrototypeOf(this, PluginTypeMismatchError.prototype);
+  }
+}
+
+/** Thrown when a multi-step login step execution fails */
+export class StepExecutionError extends AuthError {
+  public readonly pluginName: string;
+  public readonly stepIndex: number;
+  public readonly stepName: string;
+  public readonly originalError?: Error;
+
+  constructor(pluginName: string, stepIndex: number, stepName: string, cause?: Error) {
+    super(
+      `Step "${stepName}" (index ${stepIndex}) of plugin "${pluginName}" failed${cause ? `: ${cause.message}` : ''}`,
+      'STEP_EXECUTION_FAILED',
+    );
+    this.name = 'StepExecutionError';
+    this.pluginName = pluginName;
+    this.stepIndex = stepIndex;
+    this.stepName = stepName;
+    this.originalError = cause;
+    Object.setPrototypeOf(this, StepExecutionError.prototype);
+  }
+}
+
+/** Thrown when step index is out of range */
+export class StepOutOfRangeError extends AuthError {
+  public readonly pluginName: string;
+  public readonly stepIndex: number;
+  public readonly totalSteps: number;
+
+  constructor(pluginName: string, stepIndex: number, totalSteps: number) {
+    super(
+      `Step index ${stepIndex} is out of range for plugin "${pluginName}" (total steps: ${totalSteps})`,
+      'STEP_OUT_OF_RANGE',
+    );
+    this.name = 'StepOutOfRangeError';
+    this.pluginName = pluginName;
+    this.stepIndex = stepIndex;
+    this.totalSteps = totalSteps;
+    Object.setPrototypeOf(this, StepOutOfRangeError.prototype);
+  }
+}

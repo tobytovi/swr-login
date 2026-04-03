@@ -36,6 +36,7 @@
 - 🛡️ **默认安全** — 强制 PKCE、CSRF state 校验、HttpOnly Cookie 支持、敏感数据自动清理
 - 📦 **100% TypeScript** — 完整泛型、每个 API 都有 JSDoc，AI 编程助手友好
 - 🎯 **框架无关内核** — React 绑定在 `@swr-login/react`，核心逻辑不含 UI 代码
+- 🔗 **多步骤登录** — 内置多步骤交互式登录流程支持（MFA、短信验证码、班级码登录等）
 
 ## 快速开始
 
@@ -107,6 +108,7 @@ function LoginButton() {
 ├─────────────────────────────────────────────────────┤
 │   Hook 层 (@swr-login/react)                         │
 │   useLogin · useUser · useLogout · useSession        │
+│   useMultiStepLogin · useAuthInjector                │
 │   usePermission · AuthGuard                          │
 ├─────────────────────────────────────────────────────┤
 │   插件层                                              │
@@ -249,6 +251,8 @@ function App() {
 | Hook | 用途 | 说明 |
 |------|------|------|
 | `useLogin(pluginName?)` | 触发登录 | 通过任意已注册的插件发起登录流程 |
+| `useMultiStepLogin(pluginName)` | 多步骤登录 | 驱动多步骤登录流程，提供步骤状态管理 |
+| `useAuthInjector()` | 注入登录态 | 从外部注入登录态到 swr-login 体系（逃生舱） |
 | `useUser<T>()` | 获取用户 | 返回当前用户信息，SWR 缓存 + 自动重校验 |
 | `useLogout()` | 安全登出 | 清理 Token + BroadcastChannel 跨标签页广播 |
 | `useSession()` | 会话信息 | 获取原始 Token、过期时间等 |
@@ -342,6 +346,130 @@ const { login: passkeyLogin } = useLogin('passkey');
 | `swr-login/adapters/jwt` | localStorage / sessionStorage / memory | SPA 应用（默认推荐） |
 | `swr-login/adapters/session` | sessionStorage | 标签页级会话（关闭即清除） |
 | `swr-login/adapters/cookie` | Cookie (SameSite + Secure) | BFF 模式（HttpOnly 存储） |
+
+## 多步骤登录（Multi-Step Login）
+
+对于需要多步骤 + 中间有 UI 交互的登录流程（如班级码登录、MFA、短信验证码、企业 SSO + 部门选择），使用 `MultiStepLoginPlugin` + `useMultiStepLogin`：
+
+### 定义多步骤插件
+
+```ts
+import type { MultiStepLoginPlugin } from 'swr-login';
+
+const ClassCodePlugin: MultiStepLoginPlugin<{ classCode: string; loginCode: string }> = {
+  name: 'class-code',
+  type: 'multi-step',
+  steps: [
+    {
+      name: 'verify-code',
+      async execute({ classCode, loginCode }, ctx) {
+        const res = await fetch('/api/class-login', {
+          method: 'POST',
+          body: JSON.stringify({ classCode, loginCode }),
+        }).then(r => r.json());
+        return { classLoginToken: res.class_login_token };
+      },
+    },
+    {
+      name: 'select-student',
+      async execute({ classLoginToken }, ctx) {
+        const res = await fetch(`/api/class-students?token=${classLoginToken}`)
+          .then(r => r.json());
+        // 返回学生列表，UI 层渲染列表让用户选择
+        return { students: res.list, classLoginToken };
+      },
+    },
+    {
+      name: 'get-token',
+      async execute({ userId, classLoginToken }, ctx) {
+        const res = await fetch('/api/class-student-token', {
+          method: 'POST',
+          body: JSON.stringify({ userId, classLoginToken }),
+        }).then(r => r.json());
+        return { skey: res.skey, userId: res.user_id };
+      },
+    },
+  ],
+  async finalizeAuth({ skey, userId }, ctx) {
+    ctx.setTokens({ accessToken: skey, expiresAt: Date.now() + 86400000 });
+    return {
+      user: { id: userId, name: '' },
+      accessToken: skey,
+      expiresAt: Date.now() + 86400000,
+    };
+  },
+  // SWRLoginPlugin 接口要求，但多步骤插件不使用
+  async login() { throw new Error('Use useMultiStepLogin()'); },
+};
+```
+
+### 在组件中使用
+
+```tsx
+import { useMultiStepLogin } from 'swr-login';
+
+function ClassCodeLoginFlow() {
+  const {
+    currentStepName, stepData, start, next, back, isLoading, error, isComplete,
+  } = useMultiStepLogin<{ classCode: string; loginCode: string }>('class-code');
+
+  if (isComplete) return <Navigate to="/dashboard" />;
+
+  // 步骤 2：选择学生
+  if (currentStepName === 'select-student') {
+    return (
+      <StudentList
+        students={stepData.students}
+        onSelect={(userId) => next({ userId, classLoginToken: stepData.classLoginToken })}
+        onBack={back}
+        isLoading={isLoading}
+      />
+    );
+  }
+
+  // 默认：显示班级码输入表单
+  return <ClassCodeForm onSubmit={start} isLoading={isLoading} error={error} />;
+}
+```
+
+`useMultiStepLogin` 返回值：
+
+| 属性 | 类型 | 说明 |
+|------|------|------|
+| `currentStep` | `number` | 当前步骤索引（-1 表示未开始） |
+| `currentStepName` | `string \| null` | 当前步骤名称 |
+| `totalSteps` | `number` | 总步骤数 |
+| `start(credentials)` | `function` | 启动流程（执行第一步） |
+| `next(input)` | `function` | 继续下一步 |
+| `back()` | `function` | 回到上一步（仅 UI 回退） |
+| `cancel()` | `function` | 取消整个流程 |
+| `stepData` | `unknown` | 当前步骤的输出数据 |
+| `isLoading` | `boolean` | 是否正在执行 |
+| `error` | `Error \| null` | 当前步骤的错误 |
+| `isComplete` | `boolean` | 流程是否已完成 |
+| `authResponse` | `AuthResponse \| null` | 最终登录结果 |
+
+### 从外部注入登录态（useAuthInjector）
+
+对于登录流程完全在 swr-login 体系之外完成的场景（如第三方 SDK 登录、iframe 登录回调），使用 `useAuthInjector` 作为逃生舱：
+
+```tsx
+import { useAuthInjector } from 'swr-login';
+
+function ExternalLoginCallback() {
+  const { injectAuth } = useAuthInjector();
+
+  const handleCallback = async (token: string, user: User) => {
+    await injectAuth({
+      user,
+      accessToken: token,
+      expiresAt: Date.now() + 86400000,
+    });
+    // 所有 useUser() / AuthGuard 组件现在都能感知到登录状态
+    router.push('/dashboard');
+  };
+}
+```
 
 ## 自定义插件
 

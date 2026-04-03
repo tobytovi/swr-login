@@ -26,6 +26,7 @@ Works with Auth.js, Better Auth, Clerk, or your own backend.
 - 🛡️ **Secure by Default** — PKCE, CSRF state validation, HttpOnly cookie support, sensitive data cleanup.
 - 📦 **100% TypeScript** — Full generics, JSDoc on every API, AI-coding-assistant friendly.
 - 🎯 **Framework Agnostic Core** — React bindings in `@swr-login/react`, core logic is UI-free.
+- 🔗 **Multi-Step Login** — Built-in support for multi-step interactive login flows (MFA, SMS verification, class-code login, etc.).
 
 ## Quick Start
 
@@ -87,6 +88,7 @@ function LoginButton() {
 ├─────────────────────────────────────────────────────┤
 │   Hook Layer (@swr-login/react)                      │
 │   useLogin · useUser · useLogout · useSession        │
+│   useMultiStepLogin · useAuthInjector                │
 │   usePermission · AuthGuard                          │
 ├─────────────────────────────────────────────────────┤
 │   Plugin Layer                                       │
@@ -201,13 +203,14 @@ function App() {
 ## Core Hooks
 
 | Hook | Purpose |
-|------|---------|
+|------|---------||
 | `useLogin(pluginName?)` | Trigger login flow via any registered plugin |
+| `useMultiStepLogin(pluginName)` | Drive multi-step login flows with step state management |
+| `useAuthInjector()` | Inject external auth state into swr-login (escape hatch) |
 | `useUser<T>()` | Get current user with SWR caching & auto-revalidation |
 | `useLogout()` | Secure logout with cross-tab broadcast |
 | `useSession()` | Access raw tokens, expiry info |
 | `usePermission()` | Check roles & permissions declaratively |
-
 ## AuthGuard Component
 
 ```tsx
@@ -238,6 +241,111 @@ function App() {
 | `swr-login/adapters/jwt` | localStorage / sessionStorage / memory | SPAs (default) |
 | `swr-login/adapters/session` | sessionStorage | Tab-scoped sessions |
 | `swr-login/adapters/cookie` | Cookie (SameSite + Secure) | BFF pattern |
+
+## Multi-Step Login
+
+For login flows that require multiple steps with UI interaction in between (e.g., class-code login, MFA, SMS verification), use `MultiStepLoginPlugin` + `useMultiStepLogin`:
+
+### Define a Multi-Step Plugin
+
+```ts
+import type { MultiStepLoginPlugin } from 'swr-login';
+
+const ClassCodePlugin: MultiStepLoginPlugin<{ classCode: string; loginCode: string }> = {
+  name: 'class-code',
+  type: 'multi-step',
+  steps: [
+    {
+      name: 'verify-code',
+      async execute({ classCode, loginCode }, ctx) {
+        const res = await fetch('/api/class-login', {
+          method: 'POST',
+          body: JSON.stringify({ classCode, loginCode }),
+        }).then(r => r.json());
+        return { classLoginToken: res.class_login_token };
+      },
+    },
+    {
+      name: 'select-student',
+      async execute({ classLoginToken }, ctx) {
+        const res = await fetch(`/api/class-students?token=${classLoginToken}`)
+          .then(r => r.json());
+        return { students: res.list, classLoginToken };
+      },
+    },
+    {
+      name: 'get-token',
+      async execute({ userId, classLoginToken }, ctx) {
+        const res = await fetch('/api/class-student-token', {
+          method: 'POST',
+          body: JSON.stringify({ userId, classLoginToken }),
+        }).then(r => r.json());
+        return { skey: res.skey, userId: res.user_id };
+      },
+    },
+  ],
+  async finalizeAuth({ skey, userId }, ctx) {
+    ctx.setTokens({ accessToken: skey, expiresAt: Date.now() + 86400000 });
+    return {
+      user: { id: userId, name: '' },
+      accessToken: skey,
+      expiresAt: Date.now() + 86400000,
+    };
+  },
+  // Required by SWRLoginPlugin interface, but not used for multi-step
+  async login() { throw new Error('Use useMultiStepLogin()'); },
+};
+```
+
+### Use in Components
+
+```tsx
+import { useMultiStepLogin } from 'swr-login';
+
+function ClassCodeLoginFlow() {
+  const {
+    currentStepName, stepData, start, next, back, isLoading, error, isComplete,
+  } = useMultiStepLogin<{ classCode: string; loginCode: string }>('class-code');
+
+  if (isComplete) return <Navigate to="/dashboard" />;
+
+  if (currentStepName === 'select-student') {
+    return (
+      <StudentList
+        students={stepData.students}
+        onSelect={(userId) => next({ userId, classLoginToken: stepData.classLoginToken })}
+        onBack={back}
+        isLoading={isLoading}
+      />
+    );
+  }
+
+  // Default: show the code input form
+  return <ClassCodeForm onSubmit={start} isLoading={isLoading} error={error} />;
+}
+```
+
+### Inject External Auth State
+
+For cases where the login flow is entirely managed outside swr-login (e.g., third-party SDK, iframe login), use `useAuthInjector` as an escape hatch:
+
+```tsx
+import { useAuthInjector } from 'swr-login';
+
+function ExternalLoginCallback() {
+  const { injectAuth } = useAuthInjector();
+
+  const handleCallback = async (token: string, user: User) => {
+    await injectAuth({
+      user,
+      accessToken: token,
+      expiresAt: Date.now() + 86400000,
+    });
+    // All useUser() / AuthGuard components now recognize the login state
+    router.push('/dashboard');
+  };
+}
+```
 
 ## Custom Plugin
 

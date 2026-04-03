@@ -1,6 +1,6 @@
 {
   "name": "@swr-login/plugin-oauth-wechat",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "WeChat OAuth login plugin for swr-login (QR code scan & H5 web authorization)",
   "type": "module",
   "main": "./dist/index.cjs",

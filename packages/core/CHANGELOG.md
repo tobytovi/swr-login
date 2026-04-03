@@ -1,5 +1,17 @@
 # @swr-login/core
 
+## 0.3.0
+
+### Minor Changes
+
+- feat: add MultiStepPlugin support for multi-step login flows
+
+  - New MultiStepLoginPlugin interface and LoginStep type definition
+  - Extended PluginManager with getSteps(), executeStep(), finalizeMultiStep() methods
+  - New useMultiStepLogin hook for step-by-step login state management
+  - New useAuthInjector hook for injecting external auth state
+  - New error classes: StepNotFoundError, StepValidationError, MultiStepFlowError
+
 ## 0.2.0
 
 ### Minor Changes
