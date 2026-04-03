@@ -80,6 +80,34 @@ function LoginButton() {
 
 **That's it.** No page refresh. All components using `useUser()` update instantly.
 
+## What's Inside `swr-login`
+
+The `swr-login` package is an **all-in-one umbrella package** — install it once and you get everything. No need to install sub-packages separately.
+
+```bash
+npm install swr-login
+# That's all you need. Every adapter and plugin is included.
+```
+
+It bundles the following sub-packages and re-exports them via sub-path imports:
+
+| Sub-path Import | Included Package | Description |
+|-----------------|-----------------|-------------|
+| `swr-login` | `@swr-login/core` + `@swr-login/react` | Core logic + React bindings (Provider, Hooks, AuthGuard) |
+| `swr-login/presets` | — | Ready-to-use config presets (password, social, passkey, full) |
+| `swr-login/adapters/jwt` | `@swr-login/adapter-jwt` | JWT token storage (localStorage / sessionStorage / memory) |
+| `swr-login/adapters/session` | `@swr-login/adapter-session` | Session storage (tab-scoped, cleared on close) |
+| `swr-login/adapters/cookie` | `@swr-login/adapter-cookie` | Cookie storage (BFF pattern, HttpOnly support) |
+| `swr-login/plugins/password` | `@swr-login/plugin-password` | Username / Password login |
+| `swr-login/plugins/oauth-google` | `@swr-login/plugin-oauth-google` | Google OAuth 2.0 + PKCE |
+| `swr-login/plugins/oauth-github` | `@swr-login/plugin-oauth-github` | GitHub OAuth |
+| `swr-login/plugins/oauth-wechat` | `@swr-login/plugin-oauth-wechat` | WeChat QR Code / H5 Web Auth |
+| `swr-login/plugins/passkey` | `@swr-login/plugin-passkey` | WebAuthn / Passkey (Biometric / Security Key) |
+
+All adapters and plugins are declared as `optionalDependencies`, so your package manager installs them automatically but they won't break your build if a platform doesn't support one.
+
+> 💡 **Prefer granular control?** You can still install individual `@swr-login/*` scoped packages — see [Fine-grained Imports](#fine-grained-imports).
+
 ## Architecture
 
 ```

@@ -100,6 +100,34 @@ function LoginButton() {
 
 **就这么简单。** 无页面刷新，所有使用 `useUser()` 的组件即时更新。
 
+## `swr-login` 聚合包包含什么？
+
+`swr-login` 是一个 **一站式聚合包** —— 只需安装它一个，即可获得全部功能，无需重复安装各个子包。
+
+```bash
+npm install swr-login
+# 这就是你需要的全部。所有 adapter 和 plugin 都已包含在内。
+```
+
+它内置了以下子包，并通过子路径导入（sub-path imports）统一暴露：
+
+| 子路径导入 | 对应的独立包 | 说明 |
+|-----------|------------|------|
+| `swr-login` | `@swr-login/core` + `@swr-login/react` | 核心逻辑 + React 绑定（Provider、Hooks、AuthGuard） |
+| `swr-login/presets` | — | 开箱即用的配置预设（password、social、passkey、full） |
+| `swr-login/adapters/jwt` | `@swr-login/adapter-jwt` | JWT Token 存储（localStorage / sessionStorage / memory） |
+| `swr-login/adapters/session` | `@swr-login/adapter-session` | Session 存储（标签页级，关闭即清除） |
+| `swr-login/adapters/cookie` | `@swr-login/adapter-cookie` | Cookie 存储（BFF 模式，支持 HttpOnly） |
+| `swr-login/plugins/password` | `@swr-login/plugin-password` | 用户名 / 密码登录 |
+| `swr-login/plugins/oauth-google` | `@swr-login/plugin-oauth-google` | Google OAuth 2.0 + PKCE |
+| `swr-login/plugins/oauth-github` | `@swr-login/plugin-oauth-github` | GitHub OAuth |
+| `swr-login/plugins/oauth-wechat` | `@swr-login/plugin-oauth-wechat` | 微信扫码登录 / H5 网页授权 |
+| `swr-login/plugins/passkey` | `@swr-login/plugin-passkey` | WebAuthn / Passkey（生物识别 / 安全密钥） |
+
+所有 adapter 和 plugin 均声明为 `optionalDependencies`，包管理器会自动安装它们，但即使某个平台不支持其中某个包也不会导致构建失败。
+
+> 💡 **需要更精细的控制？** 你仍然可以单独安装 `@swr-login/*` 系列的独立包 —— 参见[按需安装](#按需安装fine-grained-imports)。
+
 ## 架构
 
 ```
