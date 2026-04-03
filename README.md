@@ -8,10 +8,10 @@ Works with Auth.js, Better Auth, Clerk, or your own backend.
 
 [![npm](https://img.shields.io/npm/v/swr-login?color=blue)](https://www.npmjs.com/package/swr-login)
 [![bundle size](https://img.shields.io/bundlephobia/minzip/swr-login?label=size)](https://bundlephobia.com/package/swr-login)
-[![license](https://img.shields.io/github/license/swr-login/swr-login)](./LICENSE)
+[![license](https://img.shields.io/github/license/swr-login/swr-login)](https://github.com/tobytovi/swr-login/blob/main/LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue)](https://www.typescriptlang.org/)
 
-[English](#features) · [中文](./README.zh-CN.md)
+[English](#features) · [中文](https://github.com/tobytovi/swr-login/blob/main/README.zh-CN.md)
 
 </div>
 
@@ -404,17 +404,17 @@ import { JWTAdapter } from '@swr-login/adapter-jwt';
 import { PasswordPlugin } from '@swr-login/plugin-password';
 ```
 
-See the full list of scoped packages in the [中文文档](./README.zh-CN.md#包列表).
+See the full list of scoped packages in the [中文文档](https://github.com/tobytovi/swr-login/blob/main/README.zh-CN.md#包列表).
 
 ## License
 
-[MIT](./LICENSE)
+[MIT](https://github.com/tobytovi/swr-login/blob/main/LICENSE)
 
 ---
 
 <div align="center">
 
-**[Documentation](https://swr-login.dev)** · **[Examples](./examples)** · **[Discord](https://discord.gg/swr-login)**
+**[Documentation](https://swr-login.dev)** · **[Examples](https://github.com/tobytovi/swr-login/tree/main/examples)** · **[Discord](https://discord.gg/swr-login)**
 
 Made with ❤️ for the React community
 
