@@ -1,4 +1,5 @@
 import type { User } from '@swr-login/core';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { useAuthContext } from '../context';
 
@@ -13,6 +14,21 @@ export interface UseUserReturn<T extends User = User> {
   isAuthenticated: boolean;
   /** Error from fetching user data */
   error: Error | undefined;
+  /**
+   * Sticky error from the last `fetchUser` failure.
+   *
+   * Unlike `error`, this value is **not** cleared when the auth state
+   * transitions (e.g. from `authenticated` → `unauthenticated`).
+   * It persists until `fetchUser` succeeds again or `clearError()` is called.
+   *
+   * Useful for distinguishing "not logged in" from "account disabled" in
+   * AuthGuard or error-boundary components.
+   */
+  lastError: Error | undefined;
+  /**
+   * Manually reset `lastError` to `undefined`.
+   */
+  clearError: () => void;
   /**
    * Manually update cached user data.
    * Call with `null` to clear, or with a user object to update.
@@ -38,7 +54,18 @@ export interface UseUserReturn<T extends User = User> {
  * ```
  */
 export function useUser<T extends User = User>(): UseUserReturn<T> {
-  const { tokenManager, config } = useAuthContext();
+  const { tokenManager, stateMachine, config } = useAuthContext();
+
+  // ── lastError 状态管理 ──────────────────────────────────────
+  const lastErrorRef = useRef<Error | undefined>(undefined);
+  const retryCountRef = useRef(0);
+  const [, setTick] = useState(0);
+  const forceUpdate = useCallback(() => setTick((t) => t + 1), []);
+
+  const clearError = useCallback(() => {
+    lastErrorRef.current = undefined;
+    forceUpdate();
+  }, [forceUpdate]);
 
   const fetcher = async (): Promise<T | null> => {
     const token = tokenManager.getAccessToken();
@@ -72,6 +99,36 @@ export function useUser<T extends User = User>(): UseUserReturn<T> {
     shouldRetryOnError: false,
   });
 
+  // ── 同步 lastError + onFetchUserError 回调 ─────────────────
+  useEffect(() => {
+    if (error) {
+      lastErrorRef.current = error;
+      forceUpdate();
+
+      // 调用 onFetchUserError 回调（如果已配置）
+      if (config.onFetchUserError) {
+        const action = config.onFetchUserError(error);
+
+        if (action === 'retry' && retryCountRef.current < 1) {
+          retryCountRef.current += 1;
+          // 触发 SWR 重新请求
+          swrMutate();
+        } else if (action === 'logout') {
+          tokenManager.clearTokens();
+          stateMachine.transition('unauthenticated');
+        }
+        // 'ignore' → 仅保留 lastError，不做额外操作
+      }
+    } else if (data !== undefined && !error) {
+      // fetchUser 成功（data 可以是 null 或 user），重置 lastError 和重试计数
+      if (lastErrorRef.current !== undefined) {
+        lastErrorRef.current = undefined;
+        forceUpdate();
+      }
+      retryCountRef.current = 0;
+    }
+  }, [error, data, forceUpdate, config, tokenManager, stateMachine, swrMutate]);
+
   const mutate = async (newData?: T | null): Promise<void> => {
     if (newData === undefined) {
       await swrMutate();
@@ -85,6 +142,8 @@ export function useUser<T extends User = User>(): UseUserReturn<T> {
     isLoading,
     isAuthenticated: !!data,
     error,
+    lastError: lastErrorRef.current,
+    clearError,
     mutate,
   };
 }

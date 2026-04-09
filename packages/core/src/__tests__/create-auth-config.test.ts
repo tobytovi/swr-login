@@ -91,4 +91,78 @@ describe('createAuthConfig', () => {
     expect(config.adapter).toBeDefined();
     expect(config.plugins).toBeDefined();
   });
+
+  // ── validateUserOnLogin & onFetchUserError ──────────────────
+
+  it('未设置 validateUserOnLogin 时应为 undefined（消费方视为 true）', () => {
+    const config = createAuthConfig({
+      adapter: mockAdapter,
+      plugins: [],
+    });
+
+    expect(config.validateUserOnLogin).toBeUndefined();
+  });
+
+  it('应保留 validateUserOnLogin 为 true 的配置', () => {
+    const config = createAuthConfig({
+      adapter: mockAdapter,
+      plugins: [],
+      validateUserOnLogin: true,
+    });
+
+    expect(config.validateUserOnLogin).toBe(true);
+  });
+
+  it('应保留 validateUserOnLogin 为 false 的配置', () => {
+    const config = createAuthConfig({
+      adapter: mockAdapter,
+      plugins: [],
+      validateUserOnLogin: false,
+    });
+
+    expect(config.validateUserOnLogin).toBe(false);
+  });
+
+  it('未设置 onFetchUserError 时应为 undefined', () => {
+    const config = createAuthConfig({
+      adapter: mockAdapter,
+      plugins: [],
+    });
+
+    expect(config.onFetchUserError).toBeUndefined();
+  });
+
+  it('应保留 onFetchUserError 回调', () => {
+    const handler = (error: Error): 'retry' | 'logout' | 'ignore' => {
+      if (error.message.includes('disabled')) return 'logout';
+      return 'ignore';
+    };
+
+    const config = createAuthConfig({
+      adapter: mockAdapter,
+      plugins: [],
+      onFetchUserError: handler,
+    });
+
+    expect(config.onFetchUserError).toBe(handler);
+    // 验证回调返回值类型正确
+    expect(config.onFetchUserError?.(new Error('account disabled'))).toBe('logout');
+    expect(config.onFetchUserError?.(new Error('network timeout'))).toBe('ignore');
+  });
+
+  it('新增配置项应为可选（不传时不影响现有行为）', () => {
+    // 仅传入必选字段，不传 validateUserOnLogin 和 onFetchUserError
+    const config = createAuthConfig({
+      adapter: mockAdapter,
+      plugins: [mockPlugin],
+      fetchUser: async () => ({ id: '1' }),
+      onLogin: () => {},
+    });
+
+    expect(config.validateUserOnLogin).toBeUndefined();
+    expect(config.onFetchUserError).toBeUndefined();
+    // 原有字段不受影响
+    expect(config.fetchUser).toBeDefined();
+    expect(config.onLogin).toBeDefined();
+  });
 });

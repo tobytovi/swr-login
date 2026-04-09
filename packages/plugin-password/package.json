@@ -1,6 +1,6 @@
 {
   "name": "@swr-login/plugin-password",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Username/password login plugin for swr-login",
   "type": "module",
   "main": "./dist/index.cjs",

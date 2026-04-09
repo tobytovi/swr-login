@@ -290,6 +290,29 @@ export interface SWRLoginConfig {
   onLogout?: () => void;
   /** Callback fired on auth errors */
   onError?: (error: Error) => void;
+  /**
+   * Whether to automatically call `fetchUser` after a successful plugin login
+   * to validate the user's status before considering the login complete.
+   *
+   * When enabled (default), `login()` will reject if `fetchUser` throws,
+   * allowing you to catch "account disabled" or similar errors in one place.
+   *
+   * @default true
+   */
+  validateUserOnLogin?: boolean;
+  /**
+   * Callback invoked when `fetchUser` throws an error (both during login
+   * validation and SWR background revalidation).
+   *
+   * Return a strategy string to control how the framework handles the error:
+   * - `'retry'`  — Re-invoke `fetchUser` once (max 1 retry to prevent loops).
+   * - `'logout'` — Clear tokens and transition to `unauthenticated`.
+   * - `'ignore'` — Keep current state; the error is stored in `lastError`.
+   *
+   * If not provided, the default SWR behavior applies (`shouldRetryOnError: false`,
+   * error is passed through to `useUser().error`).
+   */
+  onFetchUserError?: (error: Error) => 'retry' | 'logout' | 'ignore';
   /** Security options */
   security?: SecurityConfig;
 }

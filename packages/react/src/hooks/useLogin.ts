@@ -1,7 +1,9 @@
 import type { AuthResponse } from '@swr-login/core';
 import { isMultiStepPlugin } from '@swr-login/core';
 import { useCallback, useState } from 'react';
+import { mutate as swrGlobalMutate } from 'swr';
 import { useAuthContext } from '../context';
+import { AUTH_KEY } from './useUser';
 
 export interface UseLoginOptions {
   /** Plugin name to use for login */
@@ -44,7 +46,7 @@ export interface UseLoginReturn<TCredentials = unknown> {
 export function useLogin<TCredentials = unknown>(
   pluginName?: string,
 ): UseLoginReturn<TCredentials> {
-  const { pluginManager, stateMachine, config } = useAuthContext();
+  const { pluginManager, tokenManager, stateMachine, config } = useAuthContext();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -86,6 +88,21 @@ export function useLogin<TCredentials = unknown>(
 
       try {
         const response = await pluginManager.login(resolvedPlugin, resolvedCredentials);
+
+        // ── validateUserOnLogin：在 plugin 成功后调用 fetchUser 验证用户状态 ──
+        if (config.fetchUser && config.validateUserOnLogin !== false) {
+          try {
+            const user = await config.fetchUser(response.accessToken);
+            // 将 fetchUser 返回的用户写入 SWR 缓存，避免 useUser 重复请求
+            await swrGlobalMutate(AUTH_KEY, user, { revalidate: false });
+          } catch (fetchUserErr) {
+            // fetchUser 失败：回滚 token，转为 unauthenticated
+            tokenManager.clearTokens();
+            stateMachine.transition('unauthenticated');
+            throw fetchUserErr;
+          }
+        }
+
         stateMachine.transition('authenticated');
 
         // Update cache adapter if available
@@ -103,7 +120,7 @@ export function useLogin<TCredentials = unknown>(
         setIsLoading(false);
       }
     },
-    [pluginManager, stateMachine, config, pluginName],
+    [pluginManager, tokenManager, stateMachine, config, pluginName],
   );
 
   const reset = useCallback(() => {
