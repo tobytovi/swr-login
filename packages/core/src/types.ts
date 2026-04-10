@@ -265,6 +265,23 @@ export interface TokenAdapter {
   setExpiresAt(expiresAt: number): void;
   /** Clear all stored tokens */
   clear(): void;
+  /**
+   * Synchronously check whether the adapter currently holds a valid auth credential.
+   *
+   * This is a **fast, synchronous** check intended for UI-layer decisions
+   * (e.g. conditional rendering, route guards) where you need to know
+   * "is there a token at all?" without triggering a network request.
+   *
+   * **Optional.** If not implemented, the framework falls back to
+   * `getAccessToken() !== null`.
+   *
+   * Adapter authors can override this to add richer checks, e.g.:
+   * - Cookie-based adapters may check multiple cookie keys
+   * - JWT adapters may also verify the token is not expired
+   *
+   * @returns `true` if a usable auth credential exists, `false` otherwise
+   */
+  hasAuth?(): boolean;
 }
 
 // ─── Config ──────────────────────────────────────────────────

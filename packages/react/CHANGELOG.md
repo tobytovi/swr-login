@@ -1,5 +1,20 @@
 # @swr-login/react
 
+## 0.6.0
+
+### Minor Changes
+
+- feat: add `TokenAdapter.hasAuth()` optional method and `useAdapter()` hook
+
+  - `TokenAdapter` interface gains an optional `hasAuth?(): boolean` method for synchronous auth-state checks
+  - New `useAdapter()` React hook exposes `hasAuth()` (with fallback to `getAccessToken() !== null`) and the raw `adapter` reference
+  - Enables homepage auto-redirect patterns without waiting for SWR revalidation
+
+### Patch Changes
+
+- Updated dependencies
+  - @swr-login/core@0.6.0
+
 ## 0.5.0
 
 ### Minor Changes

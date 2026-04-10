@@ -322,6 +322,7 @@ const config = createAuthConfig({
 | `useAuthInjector()` | Inject external auth state into swr-login (escape hatch) |
 | `useUser<T>()` | Get current user with SWR caching, auto-revalidation, `lastError` & `clearError` |
 | `useLogout()` | Secure logout with cross-tab broadcast |
+| `useAdapter()` | Synchronous `hasAuth()` check + raw adapter access (useful for homepage auto-redirect before SWR hydration) |
 | `useSession()` | Access raw tokens, expiry info |
 | `usePermission()` | Check roles & permissions declaratively |
 ## AuthGuard Component

@@ -17,6 +17,9 @@ export type { UseUserReturn } from './hooks/useUser';
 export { useLogout } from './hooks/useLogout';
 export type { UseLogoutReturn, UseLogoutOptions } from './hooks/useLogout';
 
+export { useAdapter } from './hooks/useAdapter';
+export type { UseAdapterReturn } from './hooks/useAdapter';
+
 export { useSession } from './hooks/useSession';
 export type { SessionInfo } from './hooks/useSession';
 
