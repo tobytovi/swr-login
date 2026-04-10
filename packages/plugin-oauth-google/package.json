@@ -1,6 +1,6 @@
 {
   "name": "@swr-login/plugin-oauth-google",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Google OAuth 2.0 login plugin for swr-login (supports Popup & Redirect with PKCE)",
   "type": "module",
   "main": "./dist/index.cjs",

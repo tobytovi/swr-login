@@ -201,6 +201,28 @@ export interface AuthInjector {
   injectLogout(): Promise<void>;
 }
 
+// ─── After Auth Context ──────────────────────────────────────
+
+/**
+ * Context passed to the `afterAuth` hook after a successful plugin login,
+ * before `fetchUser` is called.
+ *
+ * Use this to perform role-based validation, redirect logic, analytics,
+ * or to skip `fetchUser` entirely for certain login flows.
+ */
+export interface AfterAuthContext {
+  /** Name of the plugin that performed the login */
+  pluginName: string;
+  /** The AuthResponse returned by the plugin's login() method */
+  authResponse: AuthResponse;
+  /**
+   * Call this to skip the subsequent `fetchUser` call.
+   * When called, `login()` will resolve immediately with the AuthResponse
+   * without invoking `fetchUser` or writing user data to the SWR cache.
+   */
+  skipFetchUser: () => void;
+}
+
 // ─── Cache Adapter ───────────────────────────────────────────
 
 /**
@@ -290,6 +312,34 @@ export interface SWRLoginConfig {
   onLogout?: () => void;
   /** Callback fired on auth errors */
   onError?: (error: Error) => void;
+  /**
+   * Hook invoked after a successful plugin login, before `fetchUser` is called.
+   *
+   * Use this to perform role-based validation, redirect to a different app,
+   * or skip `fetchUser` for certain login flows.
+   *
+   * - Return normally → continue to `fetchUser` (if configured)
+   * - Call `context.skipFetchUser()` → skip `fetchUser`, `login()` resolves immediately
+   * - Throw an error → tokens are cleared, `login()` rejects with that error
+   *
+   * Only runs during `login()` calls, not during SWR background revalidation.
+   *
+   * @example
+   * ```ts
+   * afterAuth: async ({ pluginName, authResponse, skipFetchUser }) => {
+   *   if (pluginName === 'coding-password') {
+   *     const role = await checkUserRole(authResponse.accessToken);
+   *     if (role === 'teacher') {
+   *       skipFetchUser(); // teachers don't need studentInfoGet
+   *       window.location.href = '/teacher-admin';
+   *       return;
+   *     }
+   *   }
+   *   // default: continue to fetchUser
+   * },
+   * ```
+   */
+  afterAuth?: (context: AfterAuthContext) => Promise<void>;
   /**
    * Whether to automatically call `fetchUser` after a successful plugin login
    * to validate the user's status before considering the login complete.

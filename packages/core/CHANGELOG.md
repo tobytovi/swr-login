@@ -1,5 +1,14 @@
 # @swr-login/core
 
+## 0.5.0
+
+### Minor Changes
+
+- 新增 `afterAuth` 钩子，支持在 plugin 登录成功后、`fetchUser` 调用前执行自定义逻辑。
+
+  - `@swr-login/core`：新增 `AfterAuthContext` 接口，`SWRLoginConfig` 新增 `afterAuth` 可选配置项
+  - `@swr-login/react`：`useLogin` 在 `pluginManager.login()` 成功后插入 `afterAuth` 钩子调用，支持通过 `skipFetchUser()` 跳过后续 fetchUser，或通过抛出错误回滚 token
+
 ## 0.4.0
 
 ### Minor Changes

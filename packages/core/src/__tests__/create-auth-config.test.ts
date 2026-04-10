@@ -161,8 +161,48 @@ describe('createAuthConfig', () => {
 
     expect(config.validateUserOnLogin).toBeUndefined();
     expect(config.onFetchUserError).toBeUndefined();
+    expect(config.afterAuth).toBeUndefined();
     // 原有字段不受影响
     expect(config.fetchUser).toBeDefined();
     expect(config.onLogin).toBeDefined();
+  });
+
+  // ── afterAuth ───────────────────────────────────────────────
+
+  it('未设置 afterAuth 时应为 undefined', () => {
+    const config = createAuthConfig({
+      adapter: mockAdapter,
+      plugins: [],
+    });
+
+    expect(config.afterAuth).toBeUndefined();
+  });
+
+  it('应保留 afterAuth 回调', () => {
+    const afterAuth = async () => {};
+
+    const config = createAuthConfig({
+      adapter: mockAdapter,
+      plugins: [],
+      afterAuth,
+    });
+
+    expect(config.afterAuth).toBe(afterAuth);
+  });
+
+  it('afterAuth 与 validateUserOnLogin 可同时配置', () => {
+    const afterAuth = async () => {};
+
+    const config = createAuthConfig({
+      adapter: mockAdapter,
+      plugins: [],
+      afterAuth,
+      validateUserOnLogin: true,
+      fetchUser: async () => ({ id: '1' }),
+    });
+
+    expect(config.afterAuth).toBe(afterAuth);
+    expect(config.validateUserOnLogin).toBe(true);
+    expect(config.fetchUser).toBeDefined();
   });
 });

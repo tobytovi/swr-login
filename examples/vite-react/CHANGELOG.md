@@ -1,5 +1,17 @@
 # example-vite-react
 
+## 0.0.4
+
+### Patch Changes
+
+- Updated dependencies
+  - @swr-login/core@0.5.0
+  - @swr-login/react@0.5.0
+  - @swr-login/adapter-jwt@0.2.3
+  - @swr-login/plugin-oauth-github@0.2.3
+  - @swr-login/plugin-oauth-google@0.2.3
+  - @swr-login/plugin-password@0.2.3
+
 ## 0.0.3
 
 ### Patch Changes

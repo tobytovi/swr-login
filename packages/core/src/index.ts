@@ -9,6 +9,7 @@ export type {
   SWRLoginPlugin,
   LoginStep,
   MultiStepLoginPlugin,
+  AfterAuthContext,
   AuthInjector,
   CacheAdapter,
   TokenAdapter,

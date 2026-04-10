@@ -89,8 +89,27 @@ export function useLogin<TCredentials = unknown>(
       try {
         const response = await pluginManager.login(resolvedPlugin, resolvedCredentials);
 
+        // ── afterAuth：在 plugin 成功后、fetchUser 之前执行自定义钩子 ──
+        let shouldSkipFetchUser = false;
+        if (config.afterAuth) {
+          try {
+            await config.afterAuth({
+              pluginName: resolvedPlugin,
+              authResponse: response,
+              skipFetchUser: () => {
+                shouldSkipFetchUser = true;
+              },
+            });
+          } catch (afterAuthErr) {
+            // afterAuth 抛错：回滚 token，login() reject
+            tokenManager.clearTokens();
+            stateMachine.transition('unauthenticated');
+            throw afterAuthErr;
+          }
+        }
+
         // ── validateUserOnLogin：在 plugin 成功后调用 fetchUser 验证用户状态 ──
-        if (config.fetchUser && config.validateUserOnLogin !== false) {
+        if (!shouldSkipFetchUser && config.fetchUser && config.validateUserOnLogin !== false) {
           try {
             const user = await config.fetchUser(response.accessToken);
             // 将 fetchUser 返回的用户写入 SWR 缓存，避免 useUser 重复请求

@@ -27,6 +27,8 @@ Works with Auth.js, Better Auth, Clerk, or your own backend.
 - 📦 **100% TypeScript** — Full generics, JSDoc on every API, AI-coding-assistant friendly.
 - 🎯 **Framework Agnostic Core** — React bindings in `@swr-login/react`, core logic is UI-free.
 - 🔗 **Multi-Step Login** — Built-in support for multi-step interactive login flows (MFA, SMS verification, class-code login, etc.).
+- 🪝 **afterAuth Hook** — Intercept post-login flow before `fetchUser`. Role-based redirect, skip fetchUser, or abort login.
+- 🛡️ **fetchUser Error Handling** — Built-in `validateUserOnLogin`, `onFetchUserError` callback with retry / logout / ignore strategies.
 
 ## Quick Start
 
@@ -211,6 +213,24 @@ export default createAuthConfig({
     fetch('/api/me', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json()),
   onLogin: (user) => console.log('Logged in:', user.name),
+
+  // Intercept after plugin login, before fetchUser
+  afterAuth: async ({ pluginName, authResponse, skipFetchUser }) => {
+    const role = decodeJwt(authResponse.accessToken).role;
+    if (role === 'admin') {
+      skipFetchUser(); // admins don't need fetchUser
+      window.location.href = '/admin';
+    }
+  },
+
+  // Validate user immediately after login (default: true)
+  validateUserOnLogin: true,
+
+  // Handle fetchUser errors globally
+  onFetchUserError: (error) => {
+    if (error.message.includes('disabled')) return 'logout';
+    return 'ignore';
+  },
 });
 ```
 
@@ -228,14 +248,79 @@ function App() {
 }
 ```
 
+## Lifecycle Hooks
+
+### `afterAuth`
+
+The `afterAuth` hook runs **after a plugin's `login()` succeeds** but **before `fetchUser` is called**. This gives you a chance to inspect the auth response, perform role-based redirects, or skip `fetchUser` entirely.
+
+```ts
+const config = createAuthConfig({
+  // ...plugins, adapter, fetchUser...
+  afterAuth: async ({ pluginName, authResponse, skipFetchUser }) => {
+    // Example: redirect teachers to a different app
+    if (pluginName === 'password') {
+      const role = await checkUserRole(authResponse.accessToken);
+      if (role === 'teacher') {
+        skipFetchUser();
+        window.location.href = '/teacher-admin';
+        return;
+      }
+    }
+    // Default: continue to fetchUser
+  },
+});
+```
+
+| Behavior | How |
+|----------|-----|
+| Continue to `fetchUser` | Return normally (don't call `skipFetchUser`) |
+| Skip `fetchUser` | Call `context.skipFetchUser()` — `login()` resolves immediately |
+| Abort login & rollback tokens | Throw an error — tokens are cleared, `login()` rejects |
+
+> **Note:** `afterAuth` only runs during explicit `login()` calls, not during SWR background revalidation.
+
+### `onFetchUserError`
+
+Handle errors from `fetchUser` globally — both during login validation and SWR background revalidation:
+
+```ts
+const config = createAuthConfig({
+  // ...
+  onFetchUserError: (error) => {
+    if (error.message.includes('account disabled')) return 'logout';
+    if (error.message.includes('network')) return 'retry';
+    return 'ignore'; // keep current state, error stored in lastError
+  },
+});
+```
+
+| Strategy | Effect |
+|----------|--------|
+| `'retry'` | Re-invoke `fetchUser` once (max 1 retry to prevent loops) |
+| `'logout'` | Clear tokens, transition to `unauthenticated` |
+| `'ignore'` | Keep current state; error is available via `useUser().lastError` |
+
+### `validateUserOnLogin`
+
+When `true` (default), `login()` automatically calls `fetchUser` after the plugin succeeds. If `fetchUser` throws (e.g., "account disabled"), `login()` rejects and tokens are rolled back.
+
+Set to `false` to skip this validation:
+
+```ts
+const config = createAuthConfig({
+  validateUserOnLogin: false, // login() resolves without calling fetchUser
+});
+```
+
 ## Core Hooks
 
 | Hook | Purpose |
-|------|---------||
+|------|---------|
 | `useLogin(pluginName?)` | Trigger login flow via any registered plugin |
 | `useMultiStepLogin(pluginName)` | Drive multi-step login flows with step state management |
 | `useAuthInjector()` | Inject external auth state into swr-login (escape hatch) |
-| `useUser<T>()` | Get current user with SWR caching & auto-revalidation |
+| `useUser<T>()` | Get current user with SWR caching, auto-revalidation, `lastError` & `clearError` |
 | `useLogout()` | Secure logout with cross-tab broadcast |
 | `useSession()` | Access raw tokens, expiry info |
 | `usePermission()` | Check roles & permissions declaratively |
