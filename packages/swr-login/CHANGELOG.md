@@ -1,5 +1,15 @@
 # swr-login
 
+## 0.2.6
+
+### Patch Changes
+
+- fix: add missing `useAdapter` and `UseAdapterReturn` re-exports from `@swr-login/react`
+
+  The umbrella package was missing the re-export of `useAdapter` hook and `UseAdapterReturn` type
+  that were added in `@swr-login/react@0.6.0`. Consumers using `import { useAdapter } from 'swr-login'`
+  would get a module-not-found error. This patch adds the missing re-exports.
+
 ## 0.2.5
 
 ### Patch Changes

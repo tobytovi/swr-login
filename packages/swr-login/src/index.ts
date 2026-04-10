@@ -78,6 +78,7 @@ export {
   useMultiStepLogin,
   useAuthInjector,
   useUser,
+  useAdapter,
   AUTH_KEY,
   useLogout,
   useSession,
@@ -100,6 +101,7 @@ export type {
   UsePermissionReturn,
   AuthGuardProps,
   AuthContextValue,
+  UseAdapterReturn,
 } from '@swr-login/react';
 
 // ─── Presets ──────────────────────────────────────────────────
