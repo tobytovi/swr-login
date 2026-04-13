@@ -1,5 +1,16 @@
 # @swr-login/react
 
+## 0.7.0
+
+### Minor Changes
+
+- fix: cookie-based adapter 外部登录态兼容
+
+  - **useUser fetcher**: refresh 失败后，如果 token 仍然存在（如 cookie-based 场景），继续尝试 fetchUser 让服务端验证，而非直接返回 null
+  - **SWRLoginProvider**: 初始化时，当 token 存在但 expiresAt 为 null（未知过期时间，如外部登录）时，乐观认证让 fetchUser/SWR revalidate 来验证
+
+  修复了外部登录态（如通过主站设置 cookie）导致 hasAuth()=true 但 useUser()=null 的无限循环跳转问题。
+
 ## 0.6.0
 
 ### Minor Changes

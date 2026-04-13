@@ -75,7 +75,10 @@ export function useUser<T extends User = User>(): UseUserReturn<T> {
       try {
         await tokenManager.refresh();
       } catch {
-        return null;
+        // refresh 失败，但 token 可能仍然有效（如 cookie-based 场景）
+        // 如果 token 已被清除则放弃，否则继续尝试 fetchUser 让服务端验证
+        const remainingToken = tokenManager.getAccessToken();
+        if (!remainingToken) return null;
       }
     }
 

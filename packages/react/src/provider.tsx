@@ -97,7 +97,13 @@ export function SWRLoginProvider({ config, children }: SWRLoginProviderProps) {
 
     // Check if user has existing token -> restore session
     const existingToken = tokenManager.getAccessToken();
+    const expiresAt = tokenManager.getExpiresAt();
+
     if (existingToken && !tokenManager.isExpired()) {
+      stateMachine.transition('authenticated');
+    } else if (existingToken && expiresAt === null) {
+      // expiresAt 未知（如外部登录只设置了 token 但未设置过期时间）
+      // 乐观地认为已认证，让 fetchUser / SWR revalidate 来验证
       stateMachine.transition('authenticated');
     } else if (existingToken && tokenManager.isExpired()) {
       stateMachine.transition('unauthenticated');
