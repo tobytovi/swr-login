@@ -16,9 +16,12 @@ export {
   TokenRefreshError,
   PluginNotFoundError,
   PluginInitError,
+  PluginTypeMismatchError,
   InvalidCredentialsError,
   CSRFError,
   OAuthPopupError,
+  StepExecutionError,
+  StepOutOfRangeError,
   // Core Classes
   AuthEventEmitter,
   AuthStateMachine,
@@ -67,6 +70,12 @@ export type {
   LoginStep,
   MultiStepLoginPlugin,
   AuthInjector,
+  // User change types
+  UserChangeSource,
+  UserChangeEvent,
+  // Config types
+  SWROptions,
+  AfterAuthContext,
 } from '@swr-login/core';
 
 // ─── React (Provider, Hooks, Components) ──────────────────────
@@ -78,6 +87,9 @@ export {
   useMultiStepLogin,
   useAuthInjector,
   useUser,
+  useUserChange,
+  useUserChangeEffect,
+  useUserChangeOn,
   useAdapter,
   AUTH_KEY,
   useLogout,

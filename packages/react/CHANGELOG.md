@@ -1,5 +1,12 @@
 # @swr-login/react
 
+## 0.9.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @swr-login/core@0.9.0
+
 ## 0.9.0
 
 ### Minor Changes

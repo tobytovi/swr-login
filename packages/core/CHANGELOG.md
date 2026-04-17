@@ -1,5 +1,11 @@
 # @swr-login/core
 
+## 0.9.0
+
+### Minor Changes
+
+- feat: export UserChangeEvent / UserChangeSource from @swr-login/core barrel; re-export useUserChange, useUserChangeEffect, useUserChangeOn and related types from umbrella swr-login package
+
 ## 0.8.0
 
 ### Minor Changes
