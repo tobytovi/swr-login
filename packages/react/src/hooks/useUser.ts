@@ -1,9 +1,16 @@
-import type { User } from '@swr-login/core';
+import type { User, UserChangeEvent, UserChangeSource } from '@swr-login/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { useAuthContext } from '../context';
 
 const AUTH_KEY = '__swr_login_user__';
+
+/**
+ * Time window (ms) during which a hint written by the Provider remains
+ * valid. If SWR produces a change later than this after the hint was
+ * written, we treat it as a passive `revalidate` instead.
+ */
+const USER_CHANGE_HINT_TTL_MS = 1000;
 
 export interface UseUserReturn<T extends User = User> {
   /** Current authenticated user, or null if not logged in */
@@ -34,6 +41,30 @@ export interface UseUserReturn<T extends User = User> {
    * Call with `null` to clear, or with a user object to update.
    */
   mutate: (data?: T | null) => Promise<void>;
+  /**
+   * Why the most recent `user` transition happened.
+   *
+   * - `null`         — No user-change has been observed yet in this component
+   *                    (e.g. before the first `fetchUser` resolves on mount).
+   * - `'initial'`    — First time the Provider observed a user value
+   *                    (including `null` for unauthenticated cold start).
+   * - `'login'`      — Triggered by an explicit `login()` / multi-step finalize
+   *                    / `injectAuth()` call.
+   * - `'logout'`     — Triggered by an explicit `logout()` / `injectLogout()`.
+   * - `'revalidate'` — SWR background revalidation produced a different user.
+   * - `'external'`   — Cross-tab sync via BroadcastChannel / storage events.
+   *
+   * Use this to differentiate user-initiated transitions from passive ones,
+   * e.g. to suppress a welcome toast on page refresh.
+   */
+  lastChangeSource: UserChangeSource | null;
+  /**
+   * Full event object for the most recent `user` transition, including
+   * `previousUser` and `timestamp`. `null` before the first transition.
+   *
+   * See `lastChangeSource` for a quick discriminator.
+   */
+  lastChangeEvent: UserChangeEvent<T> | null;
 }
 
 /**
@@ -52,9 +83,23 @@ export interface UseUserReturn<T extends User = User> {
  * if (!isAuthenticated) return <LoginPage />;
  * return <Dashboard user={user} />;
  * ```
+ *
+ * @example Distinguish user-change sources
+ * ```tsx
+ * const { user, lastChangeSource } = useUser();
+ *
+ * useEffect(() => {
+ *   // Only auto-redirect when we detect an *existing* session on mount,
+ *   // not when the user just pressed the "Login" button (the login form
+ *   // is responsible for its own redirect there).
+ *   if (user && lastChangeSource === 'initial') {
+ *     showRedirectOverlay();
+ *   }
+ * }, [user, lastChangeSource]);
+ * ```
  */
 export function useUser<T extends User = User>(): UseUserReturn<T> {
-  const { tokenManager, stateMachine, config } = useAuthContext();
+  const { tokenManager, stateMachine, config, emitter, userChangeHint } = useAuthContext();
 
   // ── lastError 状态管理 ──────────────────────────────────────
   const lastErrorRef = useRef<Error | undefined>(undefined);
@@ -66,6 +111,12 @@ export function useUser<T extends User = User>(): UseUserReturn<T> {
     lastErrorRef.current = undefined;
     forceUpdate();
   }, [forceUpdate]);
+
+  // ── user-change 事件：previousUser 跟踪 + lastChangeSource 状态 ──
+  // Use a sentinel (`undefined`) to mean "never observed a value yet",
+  // separate from `null` which means "observed and was unauthenticated".
+  const previousUserRef = useRef<T | null | undefined>(undefined);
+  const [lastChangeEvent, setLastChangeEvent] = useState<UserChangeEvent<T> | null>(null);
 
   const fetcher = async (): Promise<T | null> => {
     const token = tokenManager.getAccessToken();
@@ -110,6 +161,46 @@ export function useUser<T extends User = User>(): UseUserReturn<T> {
       refreshInterval: config.swrOptions.refreshInterval,
     }),
   });
+
+  // ── user-change 派发（每当 SWR 的 data 稳定为 user/null 时触发一次）──
+  useEffect(() => {
+    // SWR 尚未完成首次解析：data === undefined → 跳过
+    if (data === undefined) return;
+
+    const prev = previousUserRef.current;
+    // 值未变化（含对象引用 +  null → null）→ 不派发
+    if (Object.is(prev, data)) return;
+
+    // 选择 source：
+    //   1) 首次（prev === undefined）→ 'initial'
+    //   2) Provider 近期标记了 hint（TTL 内）→ 使用 hint.source
+    //   3) 其余一律视为被动 revalidate
+    let source: UserChangeSource;
+    if (prev === undefined) {
+      source = 'initial';
+    } else {
+      const now = Date.now();
+      const hintFresh =
+        userChangeHint.source !== null && now - userChangeHint.timestamp <= USER_CHANGE_HINT_TTL_MS;
+      source = hintFresh ? (userChangeHint.source as UserChangeSource) : 'revalidate';
+    }
+
+    // NOTE: We intentionally do NOT clear the hint here. Multiple useUser()
+    // consumers may each observe the same SWR data change within the same
+    // tick; all of them should see the same source. The hint will naturally
+    // expire via TTL before the next unrelated SWR revalidate arrives.
+
+    const event: UserChangeEvent<T> = {
+      source,
+      user: data,
+      previousUser: prev,
+      timestamp: Date.now(),
+    };
+
+    previousUserRef.current = data;
+    setLastChangeEvent(event);
+    emitter.emit('user-change', event as UserChangeEvent);
+  }, [data, emitter, userChangeHint]);
 
   // ── 同步 lastError + onFetchUserError 回调 ─────────────────
   useEffect(() => {
@@ -157,6 +248,8 @@ export function useUser<T extends User = User>(): UseUserReturn<T> {
     lastError: lastErrorRef.current,
     clearError,
     mutate,
+    lastChangeSource: lastChangeEvent?.source ?? null,
+    lastChangeEvent,
   };
 }
 

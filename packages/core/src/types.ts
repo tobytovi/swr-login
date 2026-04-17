@@ -450,6 +450,47 @@ export interface SWRLoginConfig {
   swrOptions?: SWROptions;
 }
 
+// ─── User Change Source ──────────────────────────────────────
+
+/**
+ * The source of a `user` value change observed by `useUser()`.
+ *
+ * Consumers can use this to distinguish *why* the user changed, which is often
+ * needed to decide whether to show a "welcome" toast, auto-redirect, fire
+ * analytics, etc.
+ *
+ * - `initial`    — Provider first mount; `fetchUser` resolved for the first time.
+ *                  Fires at most once per Provider lifecycle.
+ * - `login`      — Explicit `login()` call (including multi-step finalize and
+ *                  external injection via `useAuthInjector`).
+ * - `logout`     — Explicit `logout()` call or external `injectLogout()`.
+ * - `revalidate` — SWR background revalidation (focus / reconnect / polling /
+ *                  manual `mutate()`) produced a different user.
+ * - `external`   — Cross-tab sync via `BroadcastChannel` / storage events.
+ */
+export type UserChangeSource = 'initial' | 'login' | 'logout' | 'revalidate' | 'external';
+
+/**
+ * Event payload describing a user value transition.
+ *
+ * @typeParam T - Concrete user type (defaults to base `User`)
+ */
+export interface UserChangeEvent<T extends User = User> {
+  /** Why the user changed */
+  source: UserChangeSource;
+  /** The new user value (or `null` after logout) */
+  user: T | null;
+  /**
+   * The previous user value.
+   *
+   * `undefined` means "the Provider had not yet observed any user value"
+   * (typical for the first `initial` event). `null` means "was unauthenticated".
+   */
+  previousUser: T | null | undefined;
+  /** Wall-clock timestamp (`Date.now()`) when the event was emitted */
+  timestamp: number;
+}
+
 // ─── Events ──────────────────────────────────────────────────
 
 /** Auth event types */
@@ -459,7 +500,8 @@ export type AuthEventType =
   | 'refresh'
   | 'error'
   | 'state-change'
-  | 'token-expired';
+  | 'token-expired'
+  | 'user-change';
 
 /** Auth event payloads */
 export interface AuthEventMap {
@@ -468,6 +510,14 @@ export interface AuthEventMap {
   refresh: { accessToken: string; expiresAt: number };
   error: { error: Error };
   'state-change': AuthStateChange;
+  /**
+   * Emitted whenever `useUser()`'s underlying user value transitions.
+   *
+   * Unlike `login` / `logout`, this event is *derived* (fired by the React
+   * layer after observing the SWR cache change) and carries a `source` field
+   * so consumers can react differently to user-initiated vs. passive changes.
+   */
+  'user-change': UserChangeEvent;
   'token-expired': undefined;
 }
 

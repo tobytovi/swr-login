@@ -16,6 +16,8 @@ export type {
   SWRLoginConfig,
   SecurityConfig,
   SWROptions,
+  UserChangeSource,
+  UserChangeEvent,
   AuthEventType,
   AuthEventMap,
   BroadcastMessageType,

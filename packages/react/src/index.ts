@@ -14,6 +14,12 @@ export { useAuthInjector } from './hooks/useAuthInjector';
 export { useUser, AUTH_KEY } from './hooks/useUser';
 export type { UseUserReturn } from './hooks/useUser';
 
+export {
+  useUserChange,
+  useUserChangeEffect,
+  useUserChangeOn,
+} from './hooks/useUserChange';
+
 export { useLogout } from './hooks/useLogout';
 export type { UseLogoutReturn, UseLogoutOptions } from './hooks/useLogout';
 

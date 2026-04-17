@@ -29,6 +29,7 @@ vi.mock('../../context', () => ({
     pluginManager: { login: vi.fn() },
     emitter: { on: vi.fn(), off: vi.fn(), emit: vi.fn() },
     broadcastSync: null,
+    userChangeHint: { source: null, timestamp: 0 },
   }),
 }));
 

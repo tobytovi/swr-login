@@ -1,5 +1,40 @@
 # @swr-login/react
 
+## 0.9.0
+
+### Minor Changes
+
+- feat: add UserChangeSource / UserChangeEvent and user-change hooks
+
+  New APIs to observe _why_ the user value changed, not just _that_ it changed.
+
+  **`@swr-login/core`**
+
+  - New type `UserChangeSource` — discriminated union: `'initial' | 'login' | 'logout' | 'revalidate' | 'external'`
+  - New type `UserChangeEvent<T>` — full transition payload with `source`, `user`, `previousUser`, `timestamp`
+  - `AuthEventMap` extended with `'user-change': UserChangeEvent` — subscribe via `emitter.on('user-change', cb)`
+
+  **`@swr-login/react`**
+
+  - `useUser()` return value extended with `lastChangeSource: UserChangeSource | null` and `lastChangeEvent: UserChangeEvent<T> | null`
+  - New hook `useUserChange<T>()` — discrete event stream, re-renders on each transition
+  - New hook `useUserChangeEffect(cb)` — side-effect callback, no re-render; listener ref always up-to-date (no `useCallback` needed)
+  - New hook `useUserChangeOn(source | source[], cb)` — filtered variant of `useUserChangeEffect`
+
+  All 5 sources are handled automatically:
+
+  - `initial` — first `fetchUser` resolution on mount
+  - `login` / `logout` — Provider subscribes to emitter events and writes a TTL hint
+  - `external` — cross-tab BroadcastChannel sync marks hint as `external`
+  - `revalidate` — any other SWR cache change
+
+  Fully backward-compatible: no existing API changed.
+
+### Patch Changes
+
+- Updated dependencies
+  - @swr-login/core@0.8.0
+
 ## 0.8.0
 
 ### Minor Changes

@@ -314,10 +314,67 @@ function App() {
 | `useLogin(pluginName?)` | 触发登录 | 通过任意已注册的插件发起登录流程 |
 | `useMultiStepLogin(pluginName)` | 多步骤登录 | 驱动多步骤登录流程，提供步骤状态管理 |
 | `useAuthInjector()` | 注入登录态 | 从外部注入登录态到 swr-login 体系（逃生舱） |
-| `useUser<T>()` | 获取用户 | 返回当前用户信息，SWR 缓存 + 自动重校验 |
+| `useUser<T>()` | 获取用户 | 返回当前用户信息，SWR 缓存 + 自动重校验，含 `lastChangeSource` / `lastChangeEvent` |
+| `useUserChange<T>()` | 订阅用户变更 | 以离散事件流方式订阅用户变更（每次变更触发重渲染） |
+| `useUserChangeEffect(cb)` | 用户变更副作用 | 注册用户变更回调，不触发重渲染，适合埋点/日志 |
+| `useUserChangeOn(source, cb)` | 按来源过滤订阅 | `useUserChangeEffect` 的过滤版，仅在 source 匹配时触发 |
 | `useLogout()` | 安全登出 | 清理 Token + BroadcastChannel 跨标签页广播 |
 | `useSession()` | 会话信息 | 获取原始 Token、过期时间等 |
 | `usePermission()` | 权限检查 | 声明式地检查角色和权限 |
+
+## 用户变更来源（User Change Source）
+
+`useUser()` 现在新增了 `lastChangeSource` 和 `lastChangeEvent`，让你能知道用户值**为什么**发生了变化，而不仅仅是**变化了**。
+
+### `UserChangeSource` 取值说明
+
+| 来源 | 触发时机 |
+|------|----------|
+| `'initial'` | Provider 首次挂载，`fetchUser` 第一次解析完成 |
+| `'login'` | 显式调用 `login()` / 多步骤登录完成 / `injectAuth()` |
+| `'logout'` | 显式调用 `logout()` / `injectLogout()` |
+| `'revalidate'` | SWR 后台重校验（窗口聚焦 / 网络恢复 / 轮询 / 手动 `mutate()`）产生了不同的用户值 |
+| `'external'` | 跨标签页同步（BroadcastChannel / storage 事件） |
+
+### 使用示例
+
+```tsx
+// 1. 声明式快照：通过 useUser() 读取
+const { user, isLoading, lastChangeSource } = useUser();
+
+useEffect(() => {
+  // 仅在主动登录时弹出欢迎提示，页面刷新恢复会话时不弹
+  if (user && lastChangeSource === 'login') {
+    toast.success(`欢迎回来，${user.name}！`);
+  }
+}, [user, lastChangeSource]);
+```
+
+```tsx
+// 2. 订阅式副作用：不触发重渲染，适合埋点
+useUserChangeEffect((e) => {
+  if (e.source === 'login') analytics.track('user_login', { userId: e.user?.id });
+  if (e.source === 'logout') analytics.track('user_logout', { userId: e.previousUser?.id });
+});
+```
+
+```tsx
+// 3. 按来源过滤 — 仅在主动登录时触发
+useUserChangeOn('login', (e) => router.push('/dashboard'));
+
+// 4. 同时监听多个来源
+useUserChangeOn(['login', 'external'], (e) => refreshSidebar());
+```
+
+```tsx
+// 5. 离散事件流（每次变更触发重渲染）
+const change = useUserChange();
+useEffect(() => {
+  if (change?.source === 'external') refreshSidebar();
+}, [change]);
+```
+
+> **提示：** 使用 `lastChangeSource === 'initial'` 可以检测页面加载时的已有会话（例如显示跳转遮罩），而不会在用户主动登录后重复触发相同逻辑。
 
 ## AuthGuard 组件
 

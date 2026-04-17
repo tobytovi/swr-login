@@ -8,7 +8,7 @@ import {
 } from '@swr-login/core';
 import type React from 'react';
 import { useEffect, useMemo, useRef } from 'react';
-import { AuthContext, type AuthContextValue } from './context';
+import { AuthContext, type AuthContextValue, type UserChangeHint } from './context';
 
 export interface SWRLoginProviderProps {
   /** Authentication configuration */
@@ -55,6 +55,20 @@ export function SWRLoginProvider({ config, children }: SWRLoginProviderProps) {
     const enableSync = config.security?.enableBroadcastSync !== false;
     const broadcastSync = enableSync && typeof window !== 'undefined' ? new BroadcastSync() : null;
 
+    // Mutable hint object shared with useUser() to label the next user-change
+    // event with its causal source (login/logout/external).
+    const userChangeHint: UserChangeHint = { source: null, timestamp: 0 };
+    const markHint = (source: UserChangeHint['source']) => {
+      userChangeHint.source = source;
+      userChangeHint.timestamp = Date.now();
+    };
+
+    // Label user-change source based on lifecycle events. The actual
+    // 'user-change' event is emitted by useUser() once SWR produces a
+    // different value; these hints only tell us *why* it's about to change.
+    emitter.on('login', () => markHint('login'));
+    emitter.on('logout', () => markHint('logout'));
+
     // Wire up lifecycle callbacks
     if (config.onLogin) {
       emitter.on('login', ({ user }) => config.onLogin?.(user));
@@ -73,6 +87,7 @@ export function SWRLoginProvider({ config, children }: SWRLoginProviderProps) {
       stateMachine,
       broadcastSync,
       config,
+      userChangeHint,
     };
   }, [config]);
 
@@ -112,16 +127,28 @@ export function SWRLoginProvider({ config, children }: SWRLoginProviderProps) {
 
     // Listen for cross-tab events
     if (broadcastSync) {
+      const { userChangeHint } = contextValue;
+      const markExternal = () => {
+        userChangeHint.source = 'external';
+        userChangeHint.timestamp = Date.now();
+      };
+
       const unsubscribe = broadcastSync.onMessage((message) => {
         switch (message.type) {
           case 'LOGOUT':
             tokenManager.clearTokens();
             stateMachine.transition('unauthenticated');
             emitter.emit('logout', undefined);
+            // Emit-after-mark would be overwritten by the synchronous
+            // 'logout' handler (which sets hint='logout'); re-mark to
+            // 'external' so useUser labels this cross-tab logout correctly.
+            markExternal();
             break;
           case 'LOGIN':
           case 'TOKEN_REFRESH':
-            // Trigger revalidation from other tab
+            // Cross-tab login / refresh → refresh SWR cache; label the
+            // upcoming user-change as 'external'.
+            markExternal();
             if (cfg.cacheAdapter) {
               cfg.cacheAdapter.revalidate();
             }

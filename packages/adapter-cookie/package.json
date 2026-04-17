@@ -1,6 +1,6 @@
 {
   "name": "@swr-login/adapter-cookie",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Cookie storage adapter for swr-login (works with BFF pattern for HttpOnly cookies)",
   "type": "module",
   "main": "./dist/index.cjs",

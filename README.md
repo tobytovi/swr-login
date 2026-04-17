@@ -349,15 +349,73 @@ const config = createAuthConfig({
 ## Core Hooks
 
 | Hook | Purpose |
-|------|---------|
+|------|--------|
 | `useLogin(pluginName?)` | Trigger login flow via any registered plugin |
 | `useMultiStepLogin(pluginName)` | Drive multi-step login flows with step state management |
 | `useAuthInjector()` | Inject external auth state into swr-login (escape hatch) |
-| `useUser<T>()` | Get current user with SWR caching, auto-revalidation, `lastError` & `clearError` |
+| `useUser<T>()` | Get current user with SWR caching, auto-revalidation, `lastError` & `clearError`, `lastChangeSource` & `lastChangeEvent` |
+| `useUserChange<T>()` | Subscribe to user transitions as a discrete event stream (re-renders on each change) |
+| `useUserChangeEffect(cb)` | Register a side-effect callback on user transitions without causing re-renders |
+| `useUserChangeOn(source, cb)` | Filtered variant of `useUserChangeEffect` — fires only when source matches |
 | `useLogout()` | Secure logout with cross-tab broadcast |
 | `useAdapter()` | Synchronous `hasAuth()` check + raw adapter access (useful for homepage auto-redirect before SWR hydration) |
 | `useSession()` | Access raw tokens, expiry info |
 | `usePermission()` | Check roles & permissions declaratively |
+
+## User Change Source
+
+`useUser()` now exposes `lastChangeSource` and `lastChangeEvent` so you can tell *why* the user value changed — not just *that* it changed.
+
+### `UserChangeSource` values
+
+| Source | When it fires |
+|--------|---------------|
+| `'initial'` | Provider first mount; `fetchUser` resolved for the first time |
+| `'login'` | Explicit `login()` / multi-step finalize / `injectAuth()` call |
+| `'logout'` | Explicit `logout()` / `injectLogout()` call |
+| `'revalidate'` | SWR background revalidation (focus / reconnect / polling / manual `mutate()`) produced a different user |
+| `'external'` | Cross-tab sync via BroadcastChannel / storage events |
+
+### Quick examples
+
+```tsx
+// 1. Declarative snapshot via useUser()
+const { user, isLoading, lastChangeSource } = useUser();
+
+useEffect(() => {
+  // Suppress welcome toast on cold-start page refresh
+  if (user && lastChangeSource === 'login') {
+    toast.success(`Welcome back, ${user.name}!`);
+  }
+}, [user, lastChangeSource]);
+```
+
+```tsx
+// 2. Subscribe to every transition without re-rendering
+useUserChangeEffect((e) => {
+  if (e.source === 'login') analytics.track('user_login', { userId: e.user?.id });
+  if (e.source === 'logout') analytics.track('user_logout', { userId: e.previousUser?.id });
+});
+```
+
+```tsx
+// 3. Filter by source — fires only on explicit login
+useUserChangeOn('login', (e) => router.push('/dashboard'));
+
+// 4. Multiple sources at once
+useUserChangeOn(['login', 'external'], (e) => refreshSidebar());
+```
+
+```tsx
+// 5. Discrete event stream (re-renders on each change)
+const change = useUserChange();
+useEffect(() => {
+  if (change?.source === 'external') refreshSidebar();
+}, [change]);
+```
+
+> **Tip:** Use `lastChangeSource === 'initial'` to detect an existing session on page load (e.g., to show a redirect overlay) without triggering the same logic after an explicit login.
+
 ## AuthGuard Component
 
 ```tsx
