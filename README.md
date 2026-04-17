@@ -231,6 +231,12 @@ export default createAuthConfig({
     if (error.message.includes('disabled')) return 'logout';
     return 'ignore';
   },
+
+  // Customize SWR revalidation behavior for useUser()
+  swrOptions: {
+    revalidateOnFocus: false,     // disable revalidation on window focus
+    revalidateOnReconnect: true,  // revalidate when network recovers
+  },
 });
 ```
 
@@ -312,6 +318,33 @@ const config = createAuthConfig({
   validateUserOnLogin: false, // login() resolves without calling fetchUser
 });
 ```
+
+### `swrOptions`
+
+Customize the SWR behavior of the internal `useUser()` hook. Only a safe subset of SWR options is exposed — internal options like `fetcher` and `shouldRetryOnError` are managed by swr-login.
+
+```ts
+const config = createAuthConfig({
+  // ...
+  swrOptions: {
+    revalidateOnFocus: false,      // default: true
+    revalidateOnReconnect: false,  // default: true
+    dedupingInterval: 5000,        // default: 2000 (ms)
+    focusThrottleInterval: 10000,  // default: 5000 (ms)
+    refreshInterval: 30000,        // default: 0 (disabled)
+  },
+});
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `revalidateOnFocus` | `true` | Revalidate user data when window gets focused |
+| `revalidateOnReconnect` | `true` | Revalidate when browser regains network |
+| `dedupingInterval` | `2000` | Dedupe requests with same key in this time span (ms) |
+| `focusThrottleInterval` | `5000` | Throttle focus revalidation events (ms) |
+| `refreshInterval` | `0` | Polling interval (ms). `0` = disabled |
+
+> **Tip:** If `useUser()` was previously hardcoding `revalidateOnFocus: true` and you need to disable it (e.g., to avoid unnecessary API calls on tab switch), set `swrOptions.revalidateOnFocus` to `false`.
 
 ## Core Hooks
 

@@ -297,6 +297,52 @@ export interface SecurityConfig {
 }
 
 /**
+ * SWR options that can be customized by the consumer.
+ *
+ * Only a safe subset of SWR options is exposed to prevent consumers from
+ * accidentally overriding internal behavior (e.g. `fetcher`, `fallbackData`).
+ *
+ * @example
+ * ```ts
+ * createAuthConfig({
+ *   // ...
+ *   swrOptions: {
+ *     revalidateOnFocus: false,    // 禁用窗口聚焦时重新验证
+ *     revalidateOnReconnect: false, // 禁用网络恢复时重新验证
+ *     dedupingInterval: 5000,       // 5 秒内去重
+ *   },
+ * });
+ * ```
+ */
+export interface SWROptions {
+  /**
+   * Revalidate when window gets focused.
+   * @default true
+   */
+  revalidateOnFocus?: boolean;
+  /**
+   * Revalidate when the browser regains a network connection (via `navigator.onLine`).
+   * @default true
+   */
+  revalidateOnReconnect?: boolean;
+  /**
+   * Dedupe requests with the same key in this time span (in milliseconds).
+   * @default 2000
+   */
+  dedupingInterval?: number;
+  /**
+   * Throttle focus revalidation events in this time span (in milliseconds).
+   * @default 5000
+   */
+  focusThrottleInterval?: number;
+  /**
+   * Polling interval in milliseconds. Set to 0 to disable.
+   * @default 0
+   */
+  refreshInterval?: number;
+}
+
+/**
  * SWRLoginProvider configuration.
  *
  * @example
@@ -382,6 +428,26 @@ export interface SWRLoginConfig {
   onFetchUserError?: (error: Error) => 'retry' | 'logout' | 'ignore';
   /** Security options */
   security?: SecurityConfig;
+  /**
+   * SWR options for the internal `useUser()` hook.
+   *
+   * Use this to control revalidation behavior without wrapping in a separate `SWRConfig`.
+   * Only a safe subset of SWR options is exposed — internal options like `fetcher` and
+   * `shouldRetryOnError` are managed by swr-login and cannot be overridden.
+   *
+   * @default { revalidateOnFocus: true, revalidateOnReconnect: true }
+   *
+   * @example
+   * ```ts
+   * createAuthConfig({
+   *   // ...adapter, plugins, fetchUser...
+   *   swrOptions: {
+   *     revalidateOnFocus: false, // 禁用窗口聚焦时自动 revalidate
+   *   },
+   * });
+   * ```
+   */
+  swrOptions?: SWROptions;
 }
 
 // ─── Events ──────────────────────────────────────────────────

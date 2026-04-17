@@ -1,5 +1,12 @@
 # @swr-login/plugin-oauth-wechat
 
+## 0.2.5
+
+### Patch Changes
+
+- Updated dependencies
+  - @swr-login/core@0.7.0
+
 ## 0.2.4
 
 ### Patch Changes

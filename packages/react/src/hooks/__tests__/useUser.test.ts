@@ -221,3 +221,71 @@ describe('useUser - onFetchUserError 回调', () => {
     expect(mockSwrMutate).not.toHaveBeenCalled();
   });
 });
+
+describe('useUser - swrOptions 配置透传', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    swrData = null;
+    swrError = undefined;
+    swrIsLoading = false;
+    effectCallbacks = [];
+    mockConfig = { plugins: [] };
+  });
+
+  it('未配置 swrOptions 时应正常工作（使用默认值）', () => {
+    mockConfig = { plugins: [] };
+
+    const result = useUser();
+
+    expect(result).toBeDefined();
+    expect(result.user).toBeNull();
+  });
+
+  it('配置 swrOptions 后应正常工作', () => {
+    mockConfig = {
+      plugins: [],
+      swrOptions: {
+        revalidateOnFocus: false,
+        revalidateOnReconnect: false,
+      },
+    };
+
+    const result = useUser();
+
+    expect(result).toBeDefined();
+    expect(result.user).toBeNull();
+  });
+
+  it('swrOptions 部分配置应正常工作', () => {
+    mockConfig = {
+      plugins: [],
+      swrOptions: {
+        revalidateOnFocus: false,
+      },
+    };
+
+    const result = useUser();
+
+    expect(result).toBeDefined();
+  });
+
+  it('swrOptions 与 onFetchUserError 可同时使用', () => {
+    swrError = new Error('test error');
+    mockConfig = {
+      plugins: [],
+      swrOptions: {
+        revalidateOnFocus: false,
+      },
+      onFetchUserError: vi.fn().mockReturnValue('ignore'),
+    };
+
+    useUser();
+
+    // 执行 useEffect 回调
+    for (const cb of effectCallbacks) {
+      cb();
+    }
+
+    expect(mockConfig.onFetchUserError).toHaveBeenCalledWith(new Error('test error'));
+  });
+});

@@ -1,6 +1,6 @@
 {
   "name": "@swr-login/core",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Core logic for swr-login: state machine, token management, plugin system, event emitter",
   "type": "module",
   "main": "./dist/index.cjs",

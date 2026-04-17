@@ -205,4 +205,69 @@ describe('createAuthConfig', () => {
     expect(config.validateUserOnLogin).toBe(true);
     expect(config.fetchUser).toBeDefined();
   });
+
+  // ── swrOptions ──────────────────────────────────────────────
+
+  it('未设置 swrOptions 时应为 undefined', () => {
+    const config = createAuthConfig({
+      adapter: mockAdapter,
+      plugins: [],
+    });
+
+    expect(config.swrOptions).toBeUndefined();
+  });
+
+  it('应保留 swrOptions 配置', () => {
+    const config = createAuthConfig({
+      adapter: mockAdapter,
+      plugins: [],
+      swrOptions: {
+        revalidateOnFocus: false,
+        revalidateOnReconnect: false,
+        dedupingInterval: 5000,
+        focusThrottleInterval: 10000,
+        refreshInterval: 30000,
+      },
+    });
+
+    expect(config.swrOptions).toEqual({
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 5000,
+      focusThrottleInterval: 10000,
+      refreshInterval: 30000,
+    });
+  });
+
+  it('swrOptions 支持部分配置', () => {
+    const config = createAuthConfig({
+      adapter: mockAdapter,
+      plugins: [],
+      swrOptions: {
+        revalidateOnFocus: false,
+      },
+    });
+
+    expect(config.swrOptions?.revalidateOnFocus).toBe(false);
+    expect(config.swrOptions?.revalidateOnReconnect).toBeUndefined();
+  });
+
+  it('swrOptions 与其他配置项可同时使用', () => {
+    const config = createAuthConfig({
+      adapter: mockAdapter,
+      plugins: [],
+      fetchUser: async () => ({ id: '1' }),
+      validateUserOnLogin: true,
+      swrOptions: {
+        revalidateOnFocus: false,
+      },
+      security: {
+        enableBroadcastSync: true,
+      },
+    });
+
+    expect(config.swrOptions?.revalidateOnFocus).toBe(false);
+    expect(config.validateUserOnLogin).toBe(true);
+    expect(config.security?.enableBroadcastSync).toBe(true);
+  });
 });

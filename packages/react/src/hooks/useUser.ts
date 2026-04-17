@@ -97,9 +97,18 @@ export function useUser<T extends User = User>(): UseUserReturn<T> {
     isLoading,
     mutate: swrMutate,
   } = useSWR<T | null>(AUTH_KEY, fetcher, {
-    revalidateOnFocus: true,
-    revalidateOnReconnect: true,
+    revalidateOnFocus: config.swrOptions?.revalidateOnFocus ?? true,
+    revalidateOnReconnect: config.swrOptions?.revalidateOnReconnect ?? true,
     shouldRetryOnError: false,
+    ...(config.swrOptions?.dedupingInterval !== undefined && {
+      dedupingInterval: config.swrOptions.dedupingInterval,
+    }),
+    ...(config.swrOptions?.focusThrottleInterval !== undefined && {
+      focusThrottleInterval: config.swrOptions.focusThrottleInterval,
+    }),
+    ...(config.swrOptions?.refreshInterval !== undefined && {
+      refreshInterval: config.swrOptions.refreshInterval,
+    }),
   });
 
   // ── 同步 lastError + onFetchUserError 回调 ─────────────────

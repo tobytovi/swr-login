@@ -231,6 +231,12 @@ export default createAuthConfig({
     fetch('/api/me', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json()),
   onLogin: (user) => console.log('已登录:', user.name),
+
+  // 自定义 useUser() 的 SWR 行为
+  swrOptions: {
+    revalidateOnFocus: false,     // 禁用窗口聚焦时重新验证
+    revalidateOnReconnect: true,  // 网络恢复时重新验证
+  },
 });
 ```
 
@@ -247,6 +253,33 @@ function App() {
   );
 }
 ```
+
+### `swrOptions`
+
+自定义内部 `useUser()` Hook 的 SWR 行为。仅暴露安全的 SWR 选项子集 —— `fetcher`、`shouldRetryOnError` 等内部选项由 swr-login 管理，不可覆盖。
+
+```ts
+const config = createAuthConfig({
+  // ...
+  swrOptions: {
+    revalidateOnFocus: false,      // 默认: true
+    revalidateOnReconnect: false,  // 默认: true
+    dedupingInterval: 5000,        // 默认: 2000 (ms)
+    focusThrottleInterval: 10000,  // 默认: 5000 (ms)
+    refreshInterval: 30000,        // 默认: 0 (禁用)
+  },
+});
+```
+
+| 选项 | 默认值 | 说明 |
+|------|--------|------|
+| `revalidateOnFocus` | `true` | 窗口聚焦时是否重新验证用户数据 |
+| `revalidateOnReconnect` | `true` | 浏览器恢复网络时是否重新验证 |
+| `dedupingInterval` | `2000` | 相同 key 的请求去重时间窗口（ms） |
+| `focusThrottleInterval` | `5000` | 聚焦事件节流间隔（ms） |
+| `refreshInterval` | `0` | 轮询间隔（ms），`0` 表示禁用 |
+
+> **提示：** 如果你不希望用户切换标签页时触发不必要的 API 请求，可以设置 `swrOptions.revalidateOnFocus` 为 `false`。
 
 ## 高级用法：手动配置
 

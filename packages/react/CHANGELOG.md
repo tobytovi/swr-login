@@ -1,5 +1,28 @@
 # @swr-login/react
 
+## 0.8.0
+
+### Minor Changes
+
+- feat: add `swrOptions` to SWRLoginConfig for consumer-configurable SWR behavior
+
+  Added a new optional `swrOptions` field to `SWRLoginConfig` that allows consumers to customize SWR revalidation behavior in `useUser()` without wrapping in a separate `SWRConfig`.
+
+  Exposed options: `revalidateOnFocus`, `revalidateOnReconnect`, `dedupingInterval`, `focusThrottleInterval`, `refreshInterval`.
+
+  Previously, `useUser()` hardcoded `revalidateOnFocus: true` which could not be overridden by consumers. Now consumers can disable it via:
+
+  ```ts
+  createAuthConfig({
+    swrOptions: { revalidateOnFocus: false },
+  });
+  ```
+
+### Patch Changes
+
+- Updated dependencies
+  - @swr-login/core@0.7.0
+
 ## 0.7.0
 
 ### Minor Changes

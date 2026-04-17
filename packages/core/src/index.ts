@@ -15,6 +15,7 @@ export type {
   TokenAdapter,
   SWRLoginConfig,
   SecurityConfig,
+  SWROptions,
   AuthEventType,
   AuthEventMap,
   BroadcastMessageType,
