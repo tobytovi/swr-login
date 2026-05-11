@@ -1,5 +1,13 @@
 # swr-login
 
+## 0.4.3
+
+### Patch Changes
+
+- chore(swr-login): 跟随 @swr-login/react@0.9.3 同步 patch 版本
+
+  包含修复：`useUser` hint 优先级修正（首屏立即登录被错误识别为 `initial` 的问题）。
+
 ## 0.4.2
 
 ### Patch Changes
