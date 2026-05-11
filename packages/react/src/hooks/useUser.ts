@@ -171,18 +171,24 @@ export function useUser<T extends User = User>(): UseUserReturn<T> {
     // 值未变化（含对象引用 +  null → null）→ 不派发
     if (Object.is(prev, data)) return;
 
-    // 选择 source：
-    //   1) 首次（prev === undefined）→ 'initial'
-    //   2) Provider 近期标记了 hint（TTL 内）→ 使用 hint.source
+    // 选择 source（优先级从高到低）：
+    //   1) Provider 近期标记了 hint（TTL 内）→ 使用 hint.source
+    //      hint 是由 emit('login') / emit('logout') / BroadcastChannel 等
+    //      显式同步写入的"权威信号"，必须优先于"prev 是否存在"启发式。
+    //      否则在 SWR 首屏 fetch 未完成前用户就触发 login() 时，
+    //      会把本应是 'login' 的事件错误地派发为 'initial'。
+    //   2) 首次（prev === undefined）→ 'initial'
     //   3) 其余一律视为被动 revalidate
     let source: UserChangeSource;
-    if (prev === undefined) {
+    const now = Date.now();
+    const hintFresh =
+      userChangeHint.source !== null && now - userChangeHint.timestamp <= USER_CHANGE_HINT_TTL_MS;
+    if (hintFresh) {
+      source = userChangeHint.source as UserChangeSource;
+    } else if (prev === undefined) {
       source = 'initial';
     } else {
-      const now = Date.now();
-      const hintFresh =
-        userChangeHint.source !== null && now - userChangeHint.timestamp <= USER_CHANGE_HINT_TTL_MS;
-      source = hintFresh ? (userChangeHint.source as UserChangeSource) : 'revalidate';
+      source = 'revalidate';
     }
 
     // NOTE: We intentionally do NOT clear the hint here. Multiple useUser()

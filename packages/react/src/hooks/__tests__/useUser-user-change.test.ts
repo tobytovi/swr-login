@@ -247,6 +247,48 @@ describe('useUser - user-change / lastChangeSource', () => {
     expect(result.lastChangeSource).toBe('external');
   });
 
+  // ── Regression: hint 优先于 "prev === undefined" 启发式 ──────────────
+  // 场景：SWR 首屏 fetch 尚未完成（prev === undefined），用户立即点击登录，
+  // Provider 监听 emit('login') 写入 hint，随后 mutate(AUTH_KEY, user) 把
+  // SWR data 从 undefined 切到 user。期望 source='login' 而非 'initial'。
+  // See issue: swr-login-issue-user-change-source.md
+  it('首屏立即登录（prev=undefined + hint=login fresh） → source=login', () => {
+    // 不预先 renderOnce()，直接进入"SWR 首次解析"的状态
+    mockUserChangeHint.source = 'login';
+    mockUserChangeHint.timestamp = Date.now();
+
+    swrData = { id: 'u1' };
+    const result = renderOnce();
+
+    expect(result.lastChangeSource).toBe('login');
+    expect(result.lastChangeEvent).toMatchObject({
+      source: 'login',
+      user: { id: 'u1' },
+      previousUser: undefined,
+    });
+  });
+
+  it('首屏立即登出（prev=undefined + hint=logout fresh） → source=logout', () => {
+    mockUserChangeHint.source = 'logout';
+    mockUserChangeHint.timestamp = Date.now();
+
+    swrData = null;
+    const result = renderOnce();
+
+    expect(result.lastChangeSource).toBe('logout');
+    expect(result.lastChangeEvent?.previousUser).toBeUndefined();
+  });
+
+  it('首屏 + hint 已过期 → source=initial（启发式 fallback 仍然生效）', () => {
+    mockUserChangeHint.source = 'login';
+    mockUserChangeHint.timestamp = Date.now() - 5000; // 远超 TTL
+
+    swrData = { id: 'u1' };
+    const result = renderOnce();
+
+    expect(result.lastChangeSource).toBe('initial');
+  });
+
   it('hint 过期（>1s） → fallback 到 revalidate', () => {
     swrData = null;
     renderOnce();

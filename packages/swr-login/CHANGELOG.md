@@ -1,5 +1,12 @@
 # swr-login
 
+## 0.4.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @swr-login/react@0.9.3
+
 ## 0.4.1
 
 ### Patch Changes

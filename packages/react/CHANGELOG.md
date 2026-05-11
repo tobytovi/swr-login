@@ -1,5 +1,68 @@
 # @swr-login/react
 
+## 0.9.3
+
+### Patch Changes
+
+- fix(useUser): hint 优先于 `prev === undefined` 启发式，修复"首屏立即登录被识别为 initial"
+
+  ### 背景
+
+  在 `useUser` 的 user-change 事件分发逻辑中，原本的判定顺序是：
+
+  1. 先看 `prev === undefined`（"是否是首次"），如果是 → 一律 `'initial'`
+  2. 否则才看 `userChangeHint` 是否新鲜
+
+  这导致一个高发场景被错误归类：
+
+  > 用户进入页面后，`SWRLoginProvider` 已挂载，但 `useSWR(AUTH_KEY, fetcher)` 的初始 fetch 还在 inflight（或 fetcher 返回 `null` 但 SWR 还没把 `null` 提交到 `data`），用户立即点击登录按钮 → `useLogin().login()` → `pluginManager.emit('login')` → Provider 写入 `userChangeHint = { source: 'login' }` → `mutate(AUTH_KEY, user)` 把 SWR data 从 `undefined` 切到 user。
+
+  此时 `prev === undefined`，旧逻辑直接派发 `source: 'initial'`，而 hint 上明明已经写好了 `'login'`。下游订阅 `'login'` 事件的业务（关闭弹窗、跳转、埋点等）全部失效；首页 `useAutoRedirect` 反而把这次主动登录误判为"被动初始检测"。
+
+  ### 修复
+
+  调整判定优先级 —— **hint 是显式同步写入的"权威信号"，必须优先于"prev 是否存在"启发式**：
+
+  ```ts
+  let source: UserChangeSource;
+  const now = Date.now();
+  const hintFresh =
+    userChangeHint.source !== null &&
+    now - userChangeHint.timestamp <= USER_CHANGE_HINT_TTL_MS;
+  if (hintFresh) {
+    source = userChangeHint.source as UserChangeSource;
+  } else if (prev === undefined) {
+    source = "initial";
+  } else {
+    source = "revalidate";
+  }
+  ```
+
+  ### 行为对照
+
+  | 场景                             |     hintFresh     |     prev      | 旧版本           | 修复后          |
+  | :------------------------------- | :---------------: | :-----------: | :--------------- | :-------------- |
+  | 刷新/直接访问已登录会话          |       false       |   undefined   | `initial` ✅     | `initial` ✅    |
+  | **首屏立即登录（fetch 未完成）** | **true (login)**  | **undefined** | **`initial` ❌** | **`login` ✅**  |
+  | **首屏立即登出**                 | **true (logout)** | **undefined** | **`initial` ❌** | **`logout` ✅** |
+  | 已登录后再次登录                 |   true (login)    |     user      | `login` ✅       | `login` ✅      |
+  | 登出                             |   true (logout)   |     user      | `logout` ✅      | `logout` ✅     |
+  | 跨标签页同步                     |  true (external)  |     user      | `external` ✅    | `external` ✅   |
+  | 周期/焦点 revalidate             |       false       |     user      | `revalidate` ✅  | `revalidate` ✅ |
+
+  ### 兼容性
+
+  - 公共 API 无变化，仅修正 `UseUserReturn.lastChangeSource` 与 `'user-change'` 事件 `source` 字段的取值。
+  - 之前依赖错误行为 workaround（"同时接受 `'login'` 和 `'initial'` 两种 source"）的业务方，可以在升级后改为只监听 `'login'`，让 `'initial'` 重新只表示真正的"刷新/冷启动"。
+
+  ### 测试
+
+  新增 3 个回归用例：
+
+  - `首屏立即登录（prev=undefined + hint=login fresh） → source=login`
+  - `首屏立即登出（prev=undefined + hint=logout fresh） → source=logout`
+  - `首屏 + hint 已过期 → source=initial（启发式 fallback 仍然生效）`
+
 ## 0.9.2
 
 ### Patch Changes
