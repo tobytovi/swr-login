@@ -38,7 +38,16 @@ export function useAuthInjector(): AuthInjector {
         expiresAt: response.expiresAt,
       });
 
-      // 2. 状态机转换为已认证
+      // 2. 状态机转换为已认证。
+      //
+      // injectAuth 作为"逃生舱"应能从任何状态恢复到 authenticated，
+      // 但状态机不允许 `error -> authenticated` / `unauthenticated -> authenticated` 直接转换。
+      // 这两种状态都允许 `-> authenticating`，而 `authenticating -> authenticated` 合法，
+      // 因此通过 `authenticating` 中转一次即可完成恢复，且每一步都符合状态机契约。
+      const currentState = stateMachine.state;
+      if (currentState === 'error' || currentState === 'unauthenticated') {
+        stateMachine.transition('authenticating');
+      }
       stateMachine.transition('authenticated');
 
       // 3. 发射登录事件（触发 onLogin 回调、跨标签页同步等）

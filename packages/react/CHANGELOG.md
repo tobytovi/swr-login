@@ -1,5 +1,45 @@
 # @swr-login/react
 
+## 0.9.2
+
+### Patch Changes
+
+- fix(react): `useAuthInjector.injectAuth` 现在能从 `error` / `unauthenticated` 状态正常恢复到 `authenticated`
+
+  ## 背景
+
+  `useAuthInjector` 是 swr-login 的"逃生舱" hook，用于让外部登录流程
+  （如多步骤登录、第三方 SDK 回调、密码重置后的会话恢复）将登录态注入回 swr-login 体系。
+
+  ## 修复
+
+  `injectAuth` 之前直接调用 `stateMachine.transition('authenticated')`，
+  但状态机不允许 `error -> authenticated` / `unauthenticated -> authenticated`
+  直接转换，导致以下场景：
+
+  ```
+  [swr-login] Invalid state transition: error -> authenticated
+  ```
+
+  最终用户会被 `AuthGuard` 误判为未登录、踢回首页。
+
+  修复后 `injectAuth` 在检测到当前状态为 `error` 或 `unauthenticated` 时，
+  会先 `transition('authenticating')` 中转一次（这是合法转换），
+  再 `transition('authenticated')`。每一步都符合状态机契约，
+  `injectAuth` 真正成为可在任意状态下完成恢复的逃生舱。
+
+  ## 受影响场景
+
+  - `@tencent/coding-auth-password` 的 `helpers.skipReset()` 调用后，
+    业务侧用 `injectAuth(authResp)` 派发 `login` 事件以恢复登录态；
+  - 其他在 `login()` reject 之后才完成的外部登录流程；
+  - 多步骤登录中途出错后，从外部恢复登录态。
+
+  ## 兼容性
+
+  完全向后兼容。原本能直接成功的转换（`idle/authenticating/refreshing -> authenticated`）
+  路径不变；仅修复了 `error` / `unauthenticated` 起点被状态机拒绝的 bug。
+
 ## 0.9.1
 
 ### Patch Changes

@@ -1,5 +1,12 @@
 # example-nextjs-app-router
 
+## 0.0.10
+
+### Patch Changes
+
+- Updated dependencies
+  - @swr-login/react@0.9.2
+
 ## 0.0.9
 
 ### Patch Changes
