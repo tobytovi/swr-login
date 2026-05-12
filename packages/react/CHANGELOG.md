@@ -1,5 +1,53 @@
 # @swr-login/react
 
+## 0.10.0
+
+### Minor Changes
+
+- 新增：`useLogin().login()` 与 `pluginManager.login()` 支持 `options.context` 参数，用于将业务侧上下文透传给插件。
+
+  ## 动机
+
+  业务侧在调用 `login()` 时，常常需要把"本次调用从哪触发"的元信息（例如学生入口 vs 教师入口）传递给插件中的钩子（例如 `coding-auth-password` 的 `onPreReset`）。在此之前，业务侧只能通过模块级可变变量来传递，存在隐式契约、并发不安全、跨模块耦合等问题。
+
+  ## 改动
+
+  - `@swr-login/core`
+
+    - 新增导出类型 `LoginCallOptions`（`{ context?: unknown }`）。
+    - `PluginContext` 新增可选字段 `loginContext?: unknown`，由 `PluginManager.login(name, creds, { context })` 在调用插件 `login()` 时设置。
+    - `PluginManager.login(name, creds, options?)` 新增第三个可选参数。
+
+  - `@swr-login/react`
+    - `useLogin().login()` 新增可选 `options` 参数，两种调用形式都支持：
+      - `login(creds, options?)`（`useLogin('plugin-name')` 预设场景）
+      - `login(pluginName, creds?, options?)`（动态指定插件场景）
+
+  ## 兼容性
+
+  - 完全向后兼容：现有调用 `login(creds)` / `login(name, creds)` 的代码不需要修改。
+  - 不传 `options` 时，`ctx.loginContext` 为 `undefined`，与历史行为一致。
+  - 库不解释 `context` 的具体内容（类型为 `unknown`），由业务侧自行断言。
+
+  ## 示例
+
+  ```ts
+  // 调用方
+  const { login } = useLogin('coding-password');
+  await login({ account, password }, { context: { variant: 'teacher' } });
+
+  // 插件 / 钩子方（如 coding-auth-password 的 onPreReset）
+  async login(creds, ctx) {
+    const variant = (ctx.loginContext as { variant?: string })?.variant;
+    // ...
+  }
+  ```
+
+### Patch Changes
+
+- Updated dependencies
+  - @swr-login/core@0.10.0
+
 ## 0.9.3
 
 ### Patch Changes

@@ -87,6 +87,49 @@ export interface PluginContext {
   clearTokens: () => void;
   /** Current window origin for postMessage validation */
   origin: string;
+  /**
+   * Optional, opaque context provided by the business code at `login()` call time
+   * via `LoginCallOptions.context`. The library does not interpret this value;
+   * plugins (or plugin-internal hooks such as `onPreReset`) may read it to
+   * disambiguate "where this login was triggered from" without resorting to
+   * module-level mutable variables.
+   *
+   * Only set during `plugin.login(...)` invocation. Always `undefined` for
+   * `initialize` / `logout` / multi-step `executeStep` / `finalizeAuth` calls
+   * unless future APIs explicitly opt in.
+   *
+   * @example
+   * ```ts
+   * // Caller side
+   * await login(creds, { context: { variant: 'teacher' } });
+   *
+   * // Plugin side
+   * async login(creds, ctx) {
+   *   const variant = (ctx.loginContext as { variant?: string })?.variant;
+   *   // ...
+   * }
+   * ```
+   */
+  loginContext?: unknown;
+}
+
+/**
+ * Options accepted by `pluginManager.login()` and the React `useLogin().login()` hook.
+ *
+ * Currently the only field is `context`, which is stored on the {@link PluginContext}
+ * passed to the plugin's `login()` method as `ctx.loginContext`. Plugins can
+ * forward this value to their own hooks (for example, `coding-auth-password`
+ * exposes it via `PreResetContext.loginContext`).
+ *
+ * The library treats this value as opaque (`unknown`) — business code is
+ * responsible for asserting/typing it.
+ */
+export interface LoginCallOptions {
+  /**
+   * Business-defined context, passed through to the plugin via
+   * `PluginContext.loginContext`. The library does not interpret this value.
+   */
+  context?: unknown;
 }
 
 /**

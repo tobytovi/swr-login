@@ -1,4 +1,4 @@
-import type { AuthResponse } from '@swr-login/core';
+import type { AuthResponse, LoginCallOptions } from '@swr-login/core';
 import { isMultiStepPlugin } from '@swr-login/core';
 import { useCallback, useState } from 'react';
 import { mutate as swrGlobalMutate } from 'swr';
@@ -14,10 +14,27 @@ export interface UseLoginReturn<TCredentials = unknown> {
   /**
    * Trigger login with specified credentials.
    * If pluginName was not provided in options, it must be passed as first argument.
+   *
+   * The `options` argument is forwarded to `PluginManager.login()`. Specifically,
+   * `options.context` is exposed to the underlying plugin via
+   * `PluginContext.loginContext` (opaque pass-through). Use it to disambiguate
+   * concurrent login flows or pass per-call hints to plugin hooks
+   * (e.g., `coding-auth-password`'s `onPreReset`) without resorting to
+   * module-level mutable variables.
+   *
+   * @example
+   * ```tsx
+   * // With useLogin('password')
+   * await login({ user, pass }, { context: { variant: 'teacher' } });
+   *
+   * // Without preset pluginName
+   * await login('password', { user, pass }, { context: { variant: 'teacher' } });
+   * ```
    */
   login: (
     credentialsOrPluginName: TCredentials | string,
-    credentials?: TCredentials,
+    credentialsOrOptions?: TCredentials | LoginCallOptions,
+    options?: LoginCallOptions,
   ) => Promise<AuthResponse>;
   /** Whether a login request is in progress */
   isLoading: boolean;
@@ -53,17 +70,23 @@ export function useLogin<TCredentials = unknown>(
   const login = useCallback(
     async (
       credentialsOrPluginName: TCredentials | string,
-      maybeCredentials?: TCredentials,
+      credentialsOrOptions?: TCredentials | LoginCallOptions,
+      maybeOptions?: LoginCallOptions,
     ): Promise<AuthResponse> => {
       let resolvedPlugin: string;
       let resolvedCredentials: TCredentials;
+      let resolvedOptions: LoginCallOptions | undefined;
 
       if (typeof credentialsOrPluginName === 'string' && !pluginName) {
+        // Form: login(pluginName, credentials?, options?)
         resolvedPlugin = credentialsOrPluginName;
-        resolvedCredentials = (maybeCredentials ?? {}) as TCredentials;
+        resolvedCredentials = (credentialsOrOptions ?? {}) as TCredentials;
+        resolvedOptions = maybeOptions;
       } else if (pluginName) {
+        // Form: login(credentials, options?)
         resolvedPlugin = pluginName;
         resolvedCredentials = credentialsOrPluginName as TCredentials;
+        resolvedOptions = credentialsOrOptions as LoginCallOptions | undefined;
       } else {
         throw new Error(
           '[swr-login] Plugin name is required. Provide it to useLogin() or login().',
@@ -87,7 +110,11 @@ export function useLogin<TCredentials = unknown>(
       }
 
       try {
-        const response = await pluginManager.login(resolvedPlugin, resolvedCredentials);
+        const response = await pluginManager.login(
+          resolvedPlugin,
+          resolvedCredentials,
+          resolvedOptions,
+        );
 
         // ── afterAuth：在 plugin 成功后、fetchUser 之前执行自定义钩子 ──
         let shouldSkipFetchUser = false;

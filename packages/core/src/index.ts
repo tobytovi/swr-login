@@ -6,6 +6,7 @@ export type {
   AuthResponse,
   PluginType,
   PluginContext,
+  LoginCallOptions,
   SWRLoginPlugin,
   LoginStep,
   MultiStepLoginPlugin,

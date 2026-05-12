@@ -55,6 +55,7 @@ export type {
   AuthResponse,
   PluginType,
   PluginContext,
+  LoginCallOptions,
   SWRLoginPlugin,
   CacheAdapter,
   TokenAdapter,

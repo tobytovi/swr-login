@@ -9,6 +9,7 @@ import type { AuthEventEmitter } from './event-emitter';
 import type { TokenManager } from './token-manager';
 import {
   type AuthResponse,
+  type LoginCallOptions,
   type LoginStep,
   type PluginContext,
   type SWRLoginPlugin,
@@ -33,13 +34,14 @@ export class PluginManager {
   }
 
   /** Create plugin context for lifecycle methods */
-  private createContext(): PluginContext {
+  private createContext(loginContext?: unknown): PluginContext {
     return {
       getAccessToken: () => this.tokenManager.getAccessToken(),
       getRefreshToken: () => this.tokenManager.getRefreshToken(),
       setTokens: (tokens) => this.tokenManager.setTokens(tokens),
       clearTokens: () => this.tokenManager.clearTokens(),
       origin: typeof window !== 'undefined' ? window.location.origin : '',
+      loginContext,
     };
   }
 
@@ -87,12 +89,15 @@ export class PluginManager {
    *
    * @param pluginName - Name of the registered plugin
    * @param credentials - Plugin-specific credentials
+   * @param options - Optional invocation options. `options.context` is forwarded
+   *   to the plugin via `PluginContext.loginContext` (opaque pass-through).
    * @returns Standardized AuthResponse
    * @throws PluginNotFoundError if plugin is not registered
    */
   async login<TCredentials = unknown>(
     pluginName: string,
     credentials: TCredentials,
+    options?: LoginCallOptions,
   ): Promise<AuthResponse> {
     const plugin = this.plugins.get(pluginName);
     if (!plugin) {
@@ -102,7 +107,7 @@ export class PluginManager {
     // Ensure plugin is initialized
     await this.initializePlugin(pluginName);
 
-    const ctx = this.createContext();
+    const ctx = this.createContext(options?.context);
     const response = await (plugin as SWRLoginPlugin<TCredentials>).login(credentials, ctx);
 
     // Store tokens
