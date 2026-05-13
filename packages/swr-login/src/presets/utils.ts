@@ -19,7 +19,7 @@ export interface BasePresetOptions
    * 自定义的用户信息获取函数。
    * 优先级高于 `userUrl`，当两者同时提供时，使用此函数。
    */
-  fetchUser?: (token: string) => Promise<User>;
+  fetchUser?: (context: { token: string; loginContext?: unknown }) => Promise<User>;
 
   /**
    * JWT 适配器选项（如 storage 策略、key 前缀等）。
@@ -36,8 +36,10 @@ export interface BasePresetOptions
  *
  * @internal
  */
-export function createFetchUser(userUrl: string): (token: string) => Promise<User> {
-  return (token: string) =>
+export function createFetchUser(
+  userUrl: string,
+): (context: { token: string; loginContext?: unknown }) => Promise<User> {
+  return ({ token }: { token: string }) =>
     fetch(userUrl, {
       headers: { Authorization: `Bearer ${token}` },
     }).then((r) => r.json());

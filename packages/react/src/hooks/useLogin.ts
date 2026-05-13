@@ -126,6 +126,7 @@ export function useLogin<TCredentials = unknown>(
               skipFetchUser: () => {
                 shouldSkipFetchUser = true;
               },
+              loginContext: resolvedOptions?.context,
             });
           } catch (afterAuthErr) {
             // afterAuth 抛错：回滚 token，login() reject
@@ -138,7 +139,10 @@ export function useLogin<TCredentials = unknown>(
         // ── validateUserOnLogin：在 plugin 成功后调用 fetchUser 验证用户状态 ──
         if (!shouldSkipFetchUser && config.fetchUser && config.validateUserOnLogin !== false) {
           try {
-            const user = await config.fetchUser(response.accessToken);
+            const user = await config.fetchUser({
+              token: response.accessToken,
+              loginContext: resolvedOptions?.context,
+            });
             // 将 fetchUser 返回的用户写入 SWR 缓存，避免 useUser 重复请求
             await swrGlobalMutate(AUTH_KEY, user, { revalidate: false });
           } catch (fetchUserErr) {

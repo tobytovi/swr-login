@@ -264,6 +264,24 @@ export interface AfterAuthContext {
    * without invoking `fetchUser` or writing user data to the SWR cache.
    */
   skipFetchUser: () => void;
+  /**
+   * The opaque business context forwarded from `login(credentials, { context })`.
+   *
+   * Same value as `PluginContext.loginContext`. Use it to disambiguate
+   * "where this login was triggered from" (e.g. which entry variant) without
+   * resorting to module-level mutable variables.
+   *
+   * @example
+   * ```ts
+   * afterAuth: async ({ loginContext, skipFetchUser }) => {
+   *   const variant = (loginContext as { variant?: string })?.variant;
+   *   if (variant === 'student') return; // skip adminCheckAuth for students
+   *   const res = await adminCheckAuth();
+   *   // ...
+   * },
+   * ```
+   */
+  loginContext?: unknown;
 }
 
 // ─── Cache Adapter ───────────────────────────────────────────
@@ -408,8 +426,32 @@ export interface SWRLoginConfig {
   adapter: TokenAdapter;
   /** Registered auth plugins */
   plugins: SWRLoginPlugin[];
-  /** Optional: custom function to fetch user data using access token */
-  fetchUser?: (token: string) => Promise<User>;
+  /**
+   * Optional: custom function to fetch user data after a successful login
+   * or during SWR background revalidation.
+   *
+   * Receives a context object containing:
+   * - `token` — the current access token
+   * - `loginContext` — the opaque business context forwarded from
+   *   `login(credentials, { context })`. Only set during an explicit `login()`
+   *   call; `undefined` during SWR background revalidation (focus / reconnect
+   *   / polling / manual `mutate()`).
+   *
+   * @example
+   * ```ts
+   * fetchUser: async ({ token, loginContext }) => {
+   *   const variant = (loginContext as { variant?: string })?.variant;
+   *   if (variant === 'student') {
+   *     const res = await studentInfoGet();
+   *     return { id: res.user_id, role: 'student' };
+   *   }
+   *   // default: check admin role
+   *   const res = await adminCheckAuth();
+   *   return { id: getCookie('qqgameid'), role: 'teacher' };
+   * },
+   * ```
+   */
+  fetchUser?: (context: { token: string; loginContext?: unknown }) => Promise<User>;
   /** Optional: custom cache adapter (default: SWR) */
   cacheAdapter?: CacheAdapter;
   /** Callback fired after successful login */

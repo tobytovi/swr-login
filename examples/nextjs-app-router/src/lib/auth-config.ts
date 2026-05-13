@@ -34,7 +34,7 @@ export function createAuthConfig(): SWRLoginConfig {
         loginVerifyUrl: '/api/auth/passkey/login-verify',
       }),
     ],
-    fetchUser: async (token: string) => {
+    fetchUser: async ({ token }: { token: string }) => {
       const res = await fetch('/api/auth/me', {
         headers: { Authorization: `Bearer ${token}` },
       });

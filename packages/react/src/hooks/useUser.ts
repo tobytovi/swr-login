@@ -136,7 +136,8 @@ export function useUser<T extends User = User>(): UseUserReturn<T> {
     if (config.fetchUser) {
       const currentToken = tokenManager.getAccessToken();
       if (!currentToken) return null;
-      return (await config.fetchUser(currentToken)) as T;
+      // SWR 后台 revalidation 路径：loginContext 为 undefined（无主动登录上下文）
+      return (await config.fetchUser({ token: currentToken })) as T;
     }
 
     return null;

@@ -1,5 +1,12 @@
 # @swr-login/plugin-password
 
+## 0.2.9
+
+### Patch Changes
+
+- Updated dependencies
+  - @swr-login/core@0.11.0
+
 ## 0.2.8
 
 ### Patch Changes

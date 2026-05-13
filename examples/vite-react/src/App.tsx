@@ -28,7 +28,7 @@ const config = {
       tokenEndpoint: '/api/auth/github/callback',
     }),
   ],
-  fetchUser: async (token: string) => {
+  fetchUser: async ({ token }: { token: string }) => {
     const res = await fetch('/api/me', {
       headers: { Authorization: `Bearer ${token}` },
     });

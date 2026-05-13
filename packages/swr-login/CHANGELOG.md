@@ -1,5 +1,49 @@
 # swr-login
 
+## 0.6.0
+
+### Minor Changes
+
+- feat: `afterAuth` 和 `fetchUser` 新增 `loginContext` 支持
+
+  `AfterAuthContext` 新增 `loginContext` 字段，`SWRLoginConfig.fetchUser` 签名从 `(token: string)` 改为接收上下文对象 `({ token, loginContext })`。
+
+  两个钩子现在均可感知 `useLogin().login(credentials, { context })` 透传的业务上下文，无需在应用层维护模块级可变变量做桥接。
+
+  **Breaking change for `fetchUser`**：如果你已配置 `fetchUser`，需将签名从 `(token) => ...` 更新为 `({ token }) => ...`。
+
+  ```ts
+  // 旧签名
+  fetchUser: async (token) => {
+    return fetch("/api/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((r) => r.json());
+  };
+
+  // 新签名
+  fetchUser: async ({ token, loginContext }) => {
+    const variant = (loginContext as { variant?: string })?.variant;
+    return fetch("/api/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((r) => r.json());
+  };
+  ```
+
+  ```ts
+  // afterAuth 现在可以读取 loginContext
+  afterAuth: async ({ loginContext, skipFetchUser }) => {
+    const variant = (loginContext as { variant?: string })?.variant;
+    if (variant === 'student') return; // 学生入口跳过 adminCheckAuth
+    // ...
+  },
+  ```
+
+### Patch Changes
+
+- Updated dependencies
+  - @swr-login/core@0.11.0
+  - @swr-login/react@0.11.0
+
 ## 0.5.0
 
 ### Minor Changes

@@ -1,6 +1,6 @@
 {
   "name": "@swr-login/plugin-passkey",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "description": "WebAuthn/Passkey login plugin for swr-login (biometric & security key authentication)",
   "type": "module",
   "main": "./dist/index.cjs",
