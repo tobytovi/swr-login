@@ -1,6 +1,6 @@
 {
   "name": "@swr-login/react",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "description": "React bindings for swr-login: Provider, Hooks, and AuthGuard component",
   "type": "module",
   "main": "./dist/index.cjs",

@@ -30,6 +30,30 @@ export interface UserChangeHint {
   timestamp: number;
 }
 
+/**
+ * Mutable container that holds the `loginContext` value from the most recent
+ * successful `login()` call.
+ *
+ * Written by `useLogin` when the plugin resolves (before `fetchUser`).
+ * Read by `useUser`'s SWR fetcher to forward `loginContext` to `fetchUser`
+ * and to `translateLoginError` in the `revalidate` phase, so that both
+ * the background-revalidation `fetchUser` call and the revalidate-phase
+ * error translator receive the same `loginContext` as the original login.
+ *
+ * Cleared on `logout` (so that after logout, revalidate no longer leaks
+ * the previous session's context).
+ *
+ * Using a mutable ref-like object (instead of React state) avoids re-renders
+ * and is safe because writes happen synchronously inside the `login()` callback
+ * and reads happen inside the SWR fetcher callback.
+ *
+ * @internal
+ */
+export interface LastLoginContextRef {
+  /** The last `loginContext` passed to `login(creds, { context })`, or `undefined`. */
+  current: unknown;
+}
+
 /** Internal context value passed through SWRLoginProvider */
 export interface AuthContextValue {
   pluginManager: PluginManager;
@@ -40,6 +64,11 @@ export interface AuthContextValue {
   config: SWRLoginConfig;
   /** @internal shared hint for the next user-change source */
   userChangeHint: UserChangeHint;
+  /**
+   * @internal persisted `loginContext` from the last successful login.
+   * Forwarded to `fetchUser` and `translateLoginError` during SWR revalidation.
+   */
+  lastLoginContextRef: LastLoginContextRef;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

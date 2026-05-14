@@ -30,6 +30,7 @@ vi.mock('../../context', () => ({
     emitter: { on: vi.fn(), off: vi.fn(), emit: vi.fn() },
     broadcastSync: null,
     userChangeHint: { source: null, timestamp: 0 },
+    lastLoginContextRef: { current: undefined },
   }),
 }));
 

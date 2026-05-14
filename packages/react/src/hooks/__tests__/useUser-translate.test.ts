@@ -23,6 +23,8 @@ interface RunErrorEffectParams {
   stateMachine: { transition: (s: string) => void };
   swrMutate: () => void;
   retryCountRef: { current: number };
+  /** Simulates `lastLoginContextRef.current` — forwarded to translateLoginError in revalidate phase. */
+  lastLoginContext?: unknown;
 }
 
 interface ErrorEffectResult {
@@ -33,7 +35,8 @@ interface ErrorEffectResult {
 }
 
 function runErrorEffect(p: RunErrorEffectParams): ErrorEffectResult {
-  const { error, config, tokenManager, stateMachine, swrMutate, retryCountRef } = p;
+  const { error, config, tokenManager, stateMachine, swrMutate, retryCountRef, lastLoginContext } =
+    p;
 
   // ── (a) Already-translated errors short-circuit.
   if (isTranslated(error)) {
@@ -41,11 +44,12 @@ function runErrorEffect(p: RunErrorEffectParams): ErrorEffectResult {
   }
 
   // ── (b) Revalidate-phase translation attempt.
+  //        Now forwards lastLoginContext (mirrors the fix: lastLoginContextRef.current).
   const translated = tryTranslateLoginError(
     config.translateLoginError,
     error,
     'revalidate',
-    undefined,
+    lastLoginContext,
     undefined,
   );
   if (translated) {
@@ -114,7 +118,6 @@ describe('useUser SWR error × translateLoginError', () => {
     const onFetchUserError = vi.fn(() => 'ignore' as const);
     const translateLoginError = vi.fn((_err, ctx) => {
       expect(ctx.phase).toBe('revalidate');
-      expect(ctx.loginContext).toBeUndefined();
       expect(ctx.pluginName).toBeUndefined();
       return new LoginRejection('Account disabled (revalidate)');
     });
@@ -134,6 +137,97 @@ describe('useUser SWR error × translateLoginError', () => {
     expect(onFetchUserError).not.toHaveBeenCalled();
     expect(tokenManager.clearTokens).toHaveBeenCalled();
     expect(stateMachine.transition).toHaveBeenCalledWith('unauthenticated');
+  });
+
+  // ── lastLoginContext 透传：核心修复验证 ─────────────────────────────
+  // Regression: revalidate phase translator now receives lastLoginContext
+  // (persisted from the most recent login) instead of always undefined.
+
+  it('revalidate translator receives lastLoginContext forwarded from the last login', () => {
+    const capturedCtx: unknown[] = [];
+    const translateLoginError = vi.fn((_err, ctx) => {
+      capturedCtx.push(ctx);
+      return new LoginRejection('disabled');
+    });
+
+    runErrorEffect({
+      error: new Error('113'),
+      config: { translateLoginError },
+      tokenManager,
+      stateMachine,
+      swrMutate,
+      retryCountRef,
+      lastLoginContext: { variant: 'teacher', traceId: 'abc' },
+    });
+
+    expect(capturedCtx).toHaveLength(1);
+    expect((capturedCtx[0] as { loginContext: unknown }).loginContext).toEqual({
+      variant: 'teacher',
+      traceId: 'abc',
+    });
+  });
+
+  it('revalidate translator loginContext is undefined when no login has occurred (cold-start / page refresh before any login)', () => {
+    const capturedCtx: unknown[] = [];
+    const translateLoginError = vi.fn((_err, ctx) => {
+      capturedCtx.push(ctx);
+      return null;
+    });
+
+    runErrorEffect({
+      error: new Error('101'),
+      config: { translateLoginError },
+      tokenManager,
+      stateMachine,
+      swrMutate,
+      retryCountRef,
+      // lastLoginContext not provided → undefined (no previous login in this session)
+    });
+
+    expect(capturedCtx).toHaveLength(1);
+    expect((capturedCtx[0] as { loginContext: unknown }).loginContext).toBeUndefined();
+  });
+
+  it('revalidate translator can use loginContext.variant to gate error handling (aidemy use-case)', () => {
+    // Simulates the aidemy scenario: code 101 should only reject for teacher variant.
+    const translateLoginError = vi.fn(
+      (_err: unknown, ctx: { loginContext?: { variant?: string }; phase: string }) => {
+        const variant = ctx.loginContext?.variant;
+        const code = (_err as Error).message === '101' ? 101 : null;
+        if (code === 101 && variant) {
+          return new LoginRejection('not_platform_user', { reason: 'not_platform_user', variant });
+        }
+        return null; // revalidate without variant → pass-through (student fallback)
+      },
+    );
+
+    // Teacher variant → translator should reject
+    const teacherResult = runErrorEffect({
+      error: new Error('101'),
+      config: { translateLoginError },
+      tokenManager,
+      stateMachine,
+      swrMutate,
+      retryCountRef,
+      lastLoginContext: { variant: 'teacher' },
+    });
+    expect(LoginRejection.is(teacherResult.lastError)).toBe(true);
+    expect(tokenManager.clearTokens).toHaveBeenCalledTimes(1);
+
+    vi.clearAllMocks();
+
+    // No variant (page refresh / no prior login) → translator returns null, legacy path
+    const refreshResult = runErrorEffect({
+      error: new Error('101'),
+      config: { translateLoginError },
+      tokenManager,
+      stateMachine,
+      swrMutate,
+      retryCountRef,
+      // lastLoginContext: undefined
+    });
+    expect(LoginRejection.is(refreshResult.lastError)).toBe(false);
+    expect(tokenManager.clearTokens).not.toHaveBeenCalled();
   });
 
   it("revalidate translator miss → falls back to onFetchUserError (legacy 'logout')", () => {

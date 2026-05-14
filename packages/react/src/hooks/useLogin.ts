@@ -64,7 +64,8 @@ export interface UseLoginReturn<TCredentials = unknown> {
 export function useLogin<TCredentials = unknown>(
   pluginName?: string,
 ): UseLoginReturn<TCredentials> {
-  const { pluginManager, tokenManager, stateMachine, config } = useAuthContext();
+  const { pluginManager, tokenManager, stateMachine, config, lastLoginContextRef } =
+    useAuthContext();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -152,6 +153,13 @@ export function useLogin<TCredentials = unknown>(
           applyTranslate(pluginErr, 'plugin_login');
         }
 
+        // Persist the loginContext so that subsequent SWR revalidations can
+        // forward it to `fetchUser` and `translateLoginError` (revalidate phase).
+        // Written here — after plugin success, before afterAuth / fetchUser —
+        // so that even if afterAuth or fetchUser throws and login ultimately
+        // fails, the ref is still cleaned up on the next logout event.
+        lastLoginContextRef.current = resolvedOptions?.context;
+
         // ── afterAuth：在 plugin 成功后、fetchUser 之前执行自定义钩子 ──
         let shouldSkipFetchUser = false;
         if (config.afterAuth) {
@@ -233,7 +241,7 @@ export function useLogin<TCredentials = unknown>(
         setIsLoading(false);
       }
     },
-    [pluginManager, tokenManager, stateMachine, config, pluginName],
+    [pluginManager, tokenManager, stateMachine, config, pluginName, lastLoginContextRef],
   );
 
   const reset = useCallback(() => {

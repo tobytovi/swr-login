@@ -8,7 +8,12 @@ import {
 } from '@swr-login/core';
 import type React from 'react';
 import { useEffect, useMemo, useRef } from 'react';
-import { AuthContext, type AuthContextValue, type UserChangeHint } from './context';
+import {
+  AuthContext,
+  type AuthContextValue,
+  type LastLoginContextRef,
+  type UserChangeHint,
+} from './context';
 
 export interface SWRLoginProviderProps {
   /** Authentication configuration */
@@ -63,11 +68,20 @@ export function SWRLoginProvider({ config, children }: SWRLoginProviderProps) {
       userChangeHint.timestamp = Date.now();
     };
 
+    // Persisted loginContext from the most recent successful login.
+    // Written by useLogin after the plugin resolves; cleared on logout.
+    const lastLoginContextRef: LastLoginContextRef = { current: undefined };
+
     // Label user-change source based on lifecycle events. The actual
     // 'user-change' event is emitted by useUser() once SWR produces a
     // different value; these hints only tell us *why* it's about to change.
     emitter.on('login', () => markHint('login'));
-    emitter.on('logout', () => markHint('logout'));
+    emitter.on('logout', () => {
+      markHint('logout');
+      // Clear persisted loginContext so future revalidations after logout
+      // do not leak the previous session's context.
+      lastLoginContextRef.current = undefined;
+    });
 
     // Wire up lifecycle callbacks
     if (config.onLogin) {
@@ -88,6 +102,7 @@ export function SWRLoginProvider({ config, children }: SWRLoginProviderProps) {
       broadcastSync,
       config,
       userChangeHint,
+      lastLoginContextRef,
     };
   }, [config]);
 

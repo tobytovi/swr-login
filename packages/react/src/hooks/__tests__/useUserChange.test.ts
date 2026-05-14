@@ -36,6 +36,7 @@ vi.mock('../../context', () => ({
     pluginManager: {},
     broadcastSync: null,
     userChangeHint: { source: null, timestamp: 0 },
+    lastLoginContextRef: { current: undefined },
   }),
 }));
 

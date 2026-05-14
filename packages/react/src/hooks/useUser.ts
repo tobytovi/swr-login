@@ -100,7 +100,8 @@ export interface UseUserReturn<T extends User = User> {
  * ```
  */
 export function useUser<T extends User = User>(): UseUserReturn<T> {
-  const { tokenManager, stateMachine, config, emitter, userChangeHint } = useAuthContext();
+  const { tokenManager, stateMachine, config, emitter, userChangeHint, lastLoginContextRef } =
+    useAuthContext();
 
   // ── lastError 状态管理 ──────────────────────────────────────
   const lastErrorRef = useRef<Error | undefined>(undefined);
@@ -137,8 +138,12 @@ export function useUser<T extends User = User>(): UseUserReturn<T> {
     if (config.fetchUser) {
       const currentToken = tokenManager.getAccessToken();
       if (!currentToken) return null;
-      // SWR 后台 revalidation 路径：loginContext 为 undefined（无主动登录上下文）
-      return (await config.fetchUser({ token: currentToken })) as T;
+      // Forward the last login's context so that `fetchUser` receives consistent
+      // input in both the login-time call (useLogin) and background revalidation.
+      return (await config.fetchUser({
+        token: currentToken,
+        loginContext: lastLoginContextRef.current,
+      })) as T;
     }
 
     return null;
@@ -211,6 +216,7 @@ export function useUser<T extends User = User>(): UseUserReturn<T> {
   }, [data, emitter, userChangeHint]);
 
   // ── 同步 lastError + onFetchUserError 回调 ─────────────────
+  // biome-ignore lint/correctness/useExhaustiveDependencies: lastLoginContextRef is a stable mutable ref object; reading .current inside the effect is intentional and correct (same pattern as lastErrorRef / retryCountRef).
   useEffect(() => {
     if (error) {
       // ── (a) Already-translated errors (e.g. `LoginRejection` thrown by
@@ -237,7 +243,7 @@ export function useUser<T extends User = User>(): UseUserReturn<T> {
         config.translateLoginError,
         error,
         'revalidate',
-        undefined,
+        lastLoginContextRef.current,
         undefined,
       );
       if (translated) {

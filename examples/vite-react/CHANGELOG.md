@@ -1,5 +1,12 @@
 # example-vite-react
 
+## 0.0.15
+
+### Patch Changes
+
+- Updated dependencies
+  - @swr-login/react@0.13.0
+
 ## 0.0.14
 
 ### Patch Changes

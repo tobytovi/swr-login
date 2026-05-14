@@ -1,5 +1,40 @@
 # @swr-login/react
 
+## 0.13.0
+
+### Minor Changes
+
+- fix: `fetchUser` 和 `translateLoginError` 在 SWR revalidate 阶段现在接收 `loginContext`
+
+  ## 问题
+
+  `useUser` 内部的 SWR fetcher 在调用 `config.fetchUser` 时只传 `{ token }`，
+  未透传 `loginContext`；而 `useLogin` 路径下的 `fetchUser` 调用是带 `loginContext` 的。
+  导致同一 `fetchUser` / `translateLoginError` 函数在**登录时**与**revalidate/页面刷新**
+  场景下行为不一致，业务侧无法写出统一的分流逻辑。
+
+  ## 修复（方案 A）
+
+  新增 `lastLoginContextRef`（Provider 内部 mutable ref），持久化最近一次 `login()` 调用
+  时传入的 `loginContext`：
+
+  - `useLogin`：plugin 登录成功后立即写入 `lastLoginContextRef.current = resolvedOptions?.context`
+  - `useUser` SWR fetcher：将 `lastLoginContextRef.current` 作为 `loginContext` 传入 `fetchUser`
+  - `useUser` revalidate 错误处理：将 `lastLoginContextRef.current` 透传给 `translateLoginError`
+  - `logout` 事件：清空 `lastLoginContextRef.current = undefined`
+
+  这样 `fetchUser` 和 `translateLoginError` 在三种场景下收到一致的 `loginContext`：
+
+  | 场景                         | loginContext                         |
+  | ---------------------------- | ------------------------------------ |
+  | 登录时（`useLogin` 路径）    | `login(creds, { context })` 传入的值 |
+  | 登录后 SWR revalidate        | 同上（来自 `lastLoginContextRef`）   |
+  | 页面刷新前未登录 / logout 后 | `undefined`                          |
+
+  ## 兼容性
+
+  **完全向后兼容**。`loginContext?: unknown` 为可选字段，未使用该字段的消费者不受影响。
+
 ## 0.12.0
 
 ### Minor Changes
