@@ -132,6 +132,58 @@ export class StepExecutionError extends AuthError {
   }
 }
 
+/**
+ * Unified business-defined login rejection.
+ *
+ * Returned (or thrown) by the user-supplied `translateLoginError` hook to
+ * signal a *terminal, business-level* failure of the login flow. Once the
+ * library observes a `LoginRejection`, it guarantees the following:
+ *
+ *   1. The error is propagated as the rejection value of `login()` /
+ *      multi-step finalize without any further wrapping.
+ *   2. Tokens are cleared via the `TokenManager`.
+ *   3. The state machine is transitioned to `unauthenticated`.
+ *   4. The SWR-side `onFetchUserError` callback is *not* invoked for this
+ *      error (preventing double handling).
+ *
+ * The `payload` field is opaque to the library — consumers attach whatever
+ * structured data their UI layer needs (reason codes, variants, i18n keys, …).
+ *
+ * `instanceof` checks remain reliable across bundle boundaries thanks to the
+ * explicit `Object.setPrototypeOf` call.
+ *
+ * @example
+ * ```ts
+ * translateLoginError: (err, ctx) => {
+ *   const variant = (ctx.loginContext as { variant?: 'teacher' | 'student' })?.variant;
+ *   if (matchHttpCode(err) === 113) {
+ *     return new LoginRejection(
+ *       variant === 'student' ? 'Account disabled — please contact your teacher'
+ *                              : 'Account disabled — please contact your administrator',
+ *       { reason: 'account_disabled', variant, code: 113 }
+ *     );
+ *   }
+ *   return null;
+ * }
+ * ```
+ */
+export class LoginRejection extends Error {
+  /** Type guard that survives cross-bundle realm boundaries. */
+  static is(e: unknown): e is LoginRejection {
+    return e instanceof LoginRejection;
+  }
+
+  /** Opaque, business-defined payload. The library never inspects this. */
+  public readonly payload?: unknown;
+
+  constructor(message: string, payload?: unknown) {
+    super(message);
+    this.name = 'LoginRejection';
+    this.payload = payload;
+    Object.setPrototypeOf(this, LoginRejection.prototype);
+  }
+}
+
 /** Thrown when step index is out of range */
 export class StepOutOfRangeError extends AuthError {
   public readonly pluginName: string;

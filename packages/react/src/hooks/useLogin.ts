@@ -1,8 +1,9 @@
-import type { AuthResponse, LoginCallOptions } from '@swr-login/core';
-import { isMultiStepPlugin } from '@swr-login/core';
+import type { AuthResponse, LoginCallOptions, LoginErrorPhase } from '@swr-login/core';
+import { LoginRejection, isMultiStepPlugin } from '@swr-login/core';
 import { useCallback, useState } from 'react';
 import { mutate as swrGlobalMutate } from 'swr';
 import { useAuthContext } from '../context';
+import { tryTranslateLoginError } from '../internal/translate-login-error';
 import { AUTH_KEY } from './useUser';
 
 export interface UseLoginOptions {
@@ -109,12 +110,47 @@ export function useLogin<TCredentials = unknown>(
         throw err;
       }
 
-      try {
-        const response = await pluginManager.login(
+      // ── translateLoginError integration ────────────────────────────
+      // Run the user-supplied translator; if it produces a `LoginRejection`
+      // we apply the documented terminal-state side effects (clear tokens,
+      // transition to `unauthenticated`, mark as translated) and rethrow it.
+      // The marker lets the SWR-side `useUser` effect skip
+      // `onFetchUserError` for the same error, preventing double handling.
+      const applyTranslate = (rawErr: unknown, phase: LoginErrorPhase): never => {
+        const translated = tryTranslateLoginError(
+          config.translateLoginError,
+          rawErr,
+          phase,
+          resolvedOptions?.context,
           resolvedPlugin,
-          resolvedCredentials,
-          resolvedOptions,
         );
+        if (translated) {
+          tokenManager.clearTokens();
+          stateMachine.transition('unauthenticated');
+          throw translated;
+        }
+        // Not recognised by the translator — fall back to legacy path.
+        throw rawErr;
+      };
+
+      try {
+        // response is always assigned before use: if pluginManager.login
+        // throws, applyTranslate() re-throws (return type `never`), so the
+        // outer catch block is reached instead of any code below.
+        // We initialise with `undefined` and cast to satisfy the type checker
+        // without non-null assertions on every subsequent usage.
+        let response: AuthResponse = undefined as unknown as AuthResponse;
+        try {
+          response = await pluginManager.login(
+            resolvedPlugin,
+            resolvedCredentials,
+            resolvedOptions,
+          );
+        } catch (pluginErr) {
+          // Phase 1: plugin's own `login()` (or any plugin-internal hook
+          // such as `coding-auth-password`'s `onPreReset`) failed.
+          applyTranslate(pluginErr, 'plugin_login');
+        }
 
         // ── afterAuth：在 plugin 成功后、fetchUser 之前执行自定义钩子 ──
         let shouldSkipFetchUser = false;
@@ -129,10 +165,20 @@ export function useLogin<TCredentials = unknown>(
               loginContext: resolvedOptions?.context,
             });
           } catch (afterAuthErr) {
-            // afterAuth 抛错：回滚 token，login() reject
+            // Phase 2: `afterAuth` threw. The translator gets first dibs;
+            // if it does not recognise the error we keep the legacy
+            // semantics — clear tokens, transition to unauthenticated,
+            // and rethrow as-is so existing catch blocks still fire.
+            const translated = tryTranslateLoginError(
+              config.translateLoginError,
+              afterAuthErr,
+              'after_auth',
+              resolvedOptions?.context,
+              resolvedPlugin,
+            );
             tokenManager.clearTokens();
             stateMachine.transition('unauthenticated');
-            throw afterAuthErr;
+            throw translated ?? afterAuthErr;
           }
         }
 
@@ -146,10 +192,18 @@ export function useLogin<TCredentials = unknown>(
             // 将 fetchUser 返回的用户写入 SWR 缓存，避免 useUser 重复请求
             await swrGlobalMutate(AUTH_KEY, user, { revalidate: false });
           } catch (fetchUserErr) {
-            // fetchUser 失败：回滚 token，转为 unauthenticated
+            // Phase 3: login-time `fetchUser` threw. Translator first; if
+            // unmatched, fall back to the existing rollback behaviour.
+            const translated = tryTranslateLoginError(
+              config.translateLoginError,
+              fetchUserErr,
+              'fetch_user',
+              resolvedOptions?.context,
+              undefined,
+            );
             tokenManager.clearTokens();
             stateMachine.transition('unauthenticated');
-            throw fetchUserErr;
+            throw translated ?? fetchUserErr;
           }
         }
 
@@ -162,6 +216,15 @@ export function useLogin<TCredentials = unknown>(
 
         return response;
       } catch (err) {
+        // A `LoginRejection` is already a fully terminal, business-level
+        // error: tokens cleared, state transitioned. We must NOT clobber
+        // that by transitioning to `error`, otherwise consumers that rely
+        // on `unauthenticated` (e.g. AuthGuard) would see the wrong state.
+        if (LoginRejection.is(err)) {
+          setError(err);
+          setIsLoading(false);
+          throw err;
+        }
         const authError = err instanceof Error ? err : new Error('Login failed');
         setError(authError);
         stateMachine.transition('error');

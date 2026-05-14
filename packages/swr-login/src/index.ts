@@ -22,6 +22,7 @@ export {
   OAuthPopupError,
   StepExecutionError,
   StepOutOfRangeError,
+  LoginRejection,
   // Core Classes
   AuthEventEmitter,
   AuthStateMachine,
@@ -77,6 +78,10 @@ export type {
   // Config types
   SWROptions,
   AfterAuthContext,
+  // Login error translation
+  LoginErrorPhase,
+  TranslateLoginErrorContext,
+  TranslateLoginErrorFn,
 } from '@swr-login/core';
 
 // ─── React (Provider, Hooks, Components) ──────────────────────

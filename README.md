@@ -29,6 +29,7 @@ Works with Auth.js, Better Auth, Clerk, or your own backend.
 - 🔗 **Multi-Step Login** — Built-in support for multi-step interactive login flows (MFA, SMS verification, class-code login, etc.).
 - 🪝 **afterAuth Hook** — Intercept post-login flow before `fetchUser`. Role-based redirect, skip fetchUser, or abort login.
 - 🛡️ **fetchUser Error Handling** — Built-in `validateUserOnLogin`, `onFetchUserError` callback with retry / logout / ignore strategies.
+- 🌐 **Unified Login Error Translation** — One `translateLoginError` hook covers plugin errors, `afterAuth`, login-time `fetchUser` and SWR background revalidation. Single source of truth for the "code × variant" UI message matrix.
 
 ## Quick Start
 
@@ -318,6 +319,84 @@ const config = createAuthConfig({
   validateUserOnLogin: false, // login() resolves without calling fetchUser
 });
 ```
+
+### `translateLoginError` — Unified Login Error Translation
+
+A single hook that intercepts **every** error raised in the login pipeline — plugin login, `afterAuth`, login-time `fetchUser`, *and* SWR background revalidation — and lets you translate it into a canonical `LoginRejection` object before it surfaces to your UI.
+
+The goal: **one source of truth** for the "error code × business variant → user-facing message" matrix, instead of repeating it in `onPreReset`, `afterAuth`, `LoginForm.catch`, and `onFetchUserError`.
+
+```ts
+import { LoginRejection, createAuthConfig } from 'swr-login';
+
+const config = createAuthConfig({
+  // ...adapter, plugins, fetchUser, afterAuth...
+
+  translateLoginError: (error, ctx) => {
+    // ctx.phase: 'plugin_login' | 'after_auth' | 'fetch_user' | 'revalidate'
+    // ctx.loginContext: forwarded verbatim from `login(creds, { context })`;
+    //                   undefined during background revalidation.
+    // ctx.pluginName: present for plugin_login / after_auth phases.
+    const variant = (ctx.loginContext as { variant?: 'teacher' | 'student' })?.variant ?? 'teacher';
+    const code = matchHttpCode(error); // your helper
+
+    if (code === 112) {
+      return new LoginRejection(
+        variant === 'student'
+          ? 'School is disabled — please contact your teacher'
+          : 'School is disabled — please contact the administrator',
+        { reason: 'school_disabled', variant, code: 112 },
+      );
+    }
+    if (code === 113) {
+      return new LoginRejection(
+        variant === 'student'
+          ? 'Account is disabled — please contact your teacher'
+          : 'Account is disabled — please contact the administrator',
+        { reason: 'account_disabled', variant, code: 113 },
+      );
+    }
+    return null; // not recognised → fall back to legacy error path
+  },
+});
+```
+
+**What the library guarantees when the translator returns a `LoginRejection`:**
+
+1. Tokens are cleared (`tokenManager.clearTokens()`).
+2. State machine transitions to `unauthenticated`.
+3. `onFetchUserError` is **skipped** for that error (no double handling).
+4. `login()` rejects with the `LoginRejection` *as-is* — no further wrapping.
+5. `useUser().lastError` exposes the same `LoginRejection`.
+
+**In your UI, catch becomes a single branch:**
+
+```tsx
+try {
+  await login(credentials, { context: { variant: 'teacher' } });
+} catch (err) {
+  if (LoginRejection.is(err)) {
+    setError({ message: err.message }); // already translated for the right variant
+    return;
+  }
+  // genuine errors only (network, password mismatch, ...)
+  setError({ message: 'Network error, please retry.' });
+}
+```
+
+**Phase × hit/miss matrix:**
+
+| Configuration | Translator hit | Translator miss / not configured |
+|---------------|----------------|----------------------------------|
+| Only `translateLoginError` | Tokens cleared, `unauthenticated`, `login()` rejects with `LoginRejection` | Original error rethrown / SWR default |
+| `translateLoginError` + `onFetchUserError` | Translator wins; `onFetchUserError` is **skipped** | `onFetchUserError` runs as today |
+| Only `onFetchUserError` (legacy) | — | Behaviour unchanged |
+
+**Contract for implementers:**
+
+- Must be **synchronous** and **side-effect-free**. Do all I/O *before* the error is thrown (e.g. inside `afterAuth`).
+- If the translator itself throws, the library swallows the exception, logs `console.error`, and falls back to the legacy path — a buggy translator can never break login.
+- The `__swrLoginTranslated` marker is set as a non-enumerable property; it does not leak into `JSON.stringify` output.
 
 ### `swrOptions`
 

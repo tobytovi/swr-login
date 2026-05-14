@@ -1,6 +1,6 @@
 {
   "name": "swr-login",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "The best React Hook for auth state management. Works with any backend.",
   "type": "module",
   "main": "./dist/index.cjs",

@@ -23,6 +23,9 @@ export type {
   AuthEventMap,
   BroadcastMessageType,
   BroadcastMessage,
+  LoginErrorPhase,
+  TranslateLoginErrorContext,
+  TranslateLoginErrorFn,
 } from './types';
 export { isMultiStepPlugin } from './types';
 
@@ -40,6 +43,7 @@ export {
   OAuthPopupError,
   StepExecutionError,
   StepOutOfRangeError,
+  LoginRejection,
 } from './errors';
 
 // ─── Core Classes ─────────────────────────────────────────────

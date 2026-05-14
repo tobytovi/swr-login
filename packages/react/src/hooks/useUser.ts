@@ -2,6 +2,7 @@ import type { User, UserChangeEvent, UserChangeSource } from '@swr-login/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { useAuthContext } from '../context';
+import { isTranslated, tryTranslateLoginError } from '../internal/translate-login-error';
 
 const AUTH_KEY = '__swr_login_user__';
 
@@ -212,6 +213,42 @@ export function useUser<T extends User = User>(): UseUserReturn<T> {
   // ── 同步 lastError + onFetchUserError 回调 ─────────────────
   useEffect(() => {
     if (error) {
+      // ── (a) Already-translated errors (e.g. `LoginRejection` thrown by
+      //      `useLogin`'s in-flight translator). Tokens were cleared and
+      //      the state machine was transitioned at the throw site, so we
+      //      only need to surface the error to the consumer and skip both
+      //      the revalidate-phase translator and `onFetchUserError` to
+      //      prevent double handling.
+      if (isTranslated(error)) {
+        if (lastErrorRef.current !== error) {
+          lastErrorRef.current = error;
+          forceUpdate();
+        }
+        return;
+      }
+
+      // ── (b) Background-revalidate errors that have NOT yet been
+      //      translated. Give the user-supplied translator first dibs; if
+      //      it produces a `LoginRejection` we apply the documented
+      //      side effects (clear tokens, transition to unauthenticated)
+      //      and surface the rejection — `onFetchUserError` is then
+      //      skipped, again to avoid double handling.
+      const translated = tryTranslateLoginError(
+        config.translateLoginError,
+        error,
+        'revalidate',
+        undefined,
+        undefined,
+      );
+      if (translated) {
+        lastErrorRef.current = translated;
+        forceUpdate();
+        tokenManager.clearTokens();
+        stateMachine.transition('unauthenticated');
+        return;
+      }
+
+      // ── (c) Legacy path — preserve previous behaviour exactly.
       lastErrorRef.current = error;
       forceUpdate();
 

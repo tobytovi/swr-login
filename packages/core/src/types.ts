@@ -345,7 +345,62 @@ export interface TokenAdapter {
   hasAuth?(): boolean;
 }
 
-// ─── Config ──────────────────────────────────────────────────
+// ─── Login Error Translation ─────────────────────────────────
+
+/**
+ * The phase in which {@link SWRLoginConfig.translateLoginError} is invoked.
+ *
+ * - `plugin_login` — A plugin's `login()` (single-step) or step execution /
+ *   `finalizeAuth` (multi-step) threw. Includes plugin-internal hook errors
+ *   such as `coding-auth-password`'s `onPreReset` rejection.
+ * - `after_auth`   — The user-supplied `afterAuth` hook threw.
+ * - `fetch_user`   — `fetchUser` threw during the login flow (i.e. the
+ *   `validateUserOnLogin` step right after the plugin succeeded).
+ * - `revalidate`   — `fetchUser` threw outside of any active `login()` call,
+ *   typically during SWR background revalidation (focus / reconnect /
+ *   polling / manual `mutate()`). `loginContext` is always `undefined` here.
+ */
+export type LoginErrorPhase = 'plugin_login' | 'after_auth' | 'fetch_user' | 'revalidate';
+
+/**
+ * Context handed to {@link SWRLoginConfig.translateLoginError}.
+ *
+ * @remarks
+ * The library does not interpret `loginContext` — it is forwarded verbatim
+ * from the `login(creds, { context })` call site (and is `undefined` for
+ * the `revalidate` phase since no `login()` call is associated).
+ */
+export interface TranslateLoginErrorContext {
+  /** Which phase of the login pipeline raised the error. */
+  phase: LoginErrorPhase;
+  /**
+   * Opaque business context, mirroring `LoginCallOptions.context`.
+   * `undefined` during `'revalidate'` phase.
+   */
+  loginContext?: unknown;
+  /**
+   * Name of the plugin that triggered the error.
+   * Available for `'plugin_login'` and `'after_auth'` phases; `undefined`
+   * for `'fetch_user'` and `'revalidate'` phases.
+   */
+  pluginName?: string;
+}
+
+/**
+ * Signature of the unified login-error translator.
+ *
+ * Implementations should be **synchronous, side-effect-free pure functions**
+ * that map raw library/network errors to a canonical {@link LoginRejection}.
+ * Any side effects (token clearing, state transitions, cache eviction) are
+ * performed by the library *after* a `LoginRejection` is returned.
+ *
+ * Returning `null` / `undefined` defers to the legacy error path (e.g.
+ * `onFetchUserError`, plain rejection of `login()`).
+ */
+export type TranslateLoginErrorFn = (
+  error: unknown,
+  ctx: TranslateLoginErrorContext,
+) => import('./errors').LoginRejection | null | undefined;
 
 /** Security configuration options */
 export interface SecurityConfig {
@@ -509,8 +564,54 @@ export interface SWRLoginConfig {
    *
    * If not provided, the default SWR behavior applies (`shouldRetryOnError: false`,
    * error is passed through to `useUser().error`).
+   *
+   * @remarks
+   * When {@link SWRLoginConfig.translateLoginError} is configured *and*
+   * produces a `LoginRejection` for the same error, this callback is
+   * **skipped** to avoid double handling (the translator already implies a
+   * deterministic terminal state). Errors that the translator does not
+   * recognize (returns `null`/`undefined`) still flow into this callback.
    */
   onFetchUserError?: (error: Error) => 'retry' | 'logout' | 'ignore';
+  /**
+   * Unified login-error translator.
+   *
+   * Invoked on every error raised inside the login pipeline (plugin login,
+   * `afterAuth`, login-time `fetchUser`) **and** on every SWR
+   * background-revalidation error, *before* the legacy error path runs.
+   *
+   * Contract:
+   * - Return a {@link LoginRejection} → the library treats it as a confirmed
+   *   business-level terminal failure:
+   *     • Tokens are cleared, state machine transitions to `unauthenticated`.
+   *     • `onFetchUserError` is **not** invoked for this error.
+   *     • `login()` rejects with the returned `LoginRejection` (no further
+   *       wrapping).
+   *     • `useUser().error` exposes the `LoginRejection`.
+   * - Return `null` / `undefined` → the library falls back to the existing
+   *   error path (full backward compatibility).
+   *
+   * The translator must be a **synchronous, pure** function. If it throws,
+   * the library swallows the exception, logs via `console.error`, and falls
+   * back to the legacy path (so a buggy translator can never break login).
+   *
+   * @example
+   * ```ts
+   * translateLoginError: (err, ctx) => {
+   *   const variant = (ctx.loginContext as { variant?: 'teacher' | 'student' })?.variant ?? 'teacher';
+   *   const code = matchHttpCode(err); // user-supplied helper
+   *   if (code === 112) {
+   *     return new LoginRejection(
+   *       variant === 'student' ? 'School is disabled — please contact your teacher'
+   *                              : 'School is disabled — please contact the administrator',
+   *       { reason: 'school_disabled', variant, code: 112 }
+   *     );
+   *   }
+   *   return null;
+   * }
+   * ```
+   */
+  translateLoginError?: TranslateLoginErrorFn;
   /** Security options */
   security?: SecurityConfig;
   /**

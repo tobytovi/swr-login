@@ -1,6 +1,7 @@
 import type { AuthResponse } from '@swr-login/core';
 import { useCallback, useRef, useState } from 'react';
 import { useAuthContext } from '../context';
+import { tryTranslateLoginError } from '../internal/translate-login-error';
 
 export interface UseMultiStepLoginReturn<TCredentials = unknown> {
   /** 当前步骤索引（从 0 开始，-1 表示未开始） */
@@ -77,7 +78,7 @@ export interface UseMultiStepLoginReturn<TCredentials = unknown> {
 export function useMultiStepLogin<TCredentials = unknown>(
   pluginName: string,
 ): UseMultiStepLoginReturn<TCredentials> {
-  const { pluginManager, stateMachine, config } = useAuthContext();
+  const { pluginManager, stateMachine, config, tokenManager } = useAuthContext();
 
   const [currentStep, setCurrentStep] = useState(-1); // -1 表示未开始
   const [stepData, setStepData] = useState<unknown>(null);
@@ -118,6 +119,25 @@ export function useMultiStepLogin<TCredentials = unknown>(
           setIsComplete(true);
         }
       } catch (err) {
+        // Run the unified translator on any error raised by step execution
+        // or `finalizeAuth` — both are categorised under `plugin_login`,
+        // mirroring the single-step `useLogin` semantics. A successful
+        // translation is treated as a terminal business failure: clear
+        // tokens, transition to `unauthenticated`, and surface the
+        // `LoginRejection` to the caller without further wrapping.
+        const translated = tryTranslateLoginError(
+          config.translateLoginError,
+          err,
+          'plugin_login',
+          undefined,
+          pluginName,
+        );
+        if (translated) {
+          tokenManager.clearTokens();
+          stateMachine.transition('unauthenticated');
+          setError(translated);
+          throw translated;
+        }
         const authError = err instanceof Error ? err : new Error('Step execution failed');
         setError(authError);
         throw authError;
@@ -125,7 +145,7 @@ export function useMultiStepLogin<TCredentials = unknown>(
         setIsLoading(false);
       }
     },
-    [pluginManager, pluginName, totalSteps, stateMachine, config],
+    [pluginManager, pluginName, totalSteps, stateMachine, config, tokenManager],
   );
 
   const start = useCallback(

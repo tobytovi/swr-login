@@ -1,5 +1,36 @@
 # @swr-login/core
 
+## 0.12.0
+
+### Minor Changes
+
+- Add `translateLoginError` — a unified login-error translation hook.
+
+  A single user-supplied function now intercepts every error raised in the
+  login pipeline (`plugin_login` / `after_auth` / `fetch_user`) **and** errors
+  from SWR background revalidation (`revalidate`), giving callers one place to
+  collapse "error code × business variant → user-facing message" matrices that
+  previously had to be duplicated across `onPreReset`, `afterAuth`,
+  `LoginForm.catch`, and `onFetchUserError`.
+
+  When the translator returns a new `LoginRejection`, the library:
+
+  - Clears tokens via the configured `TokenManager`
+  - Transitions the state machine to `unauthenticated`
+  - Skips `onFetchUserError` for that error (no double-handling)
+  - Rejects `login()` with the `LoginRejection` as-is (no further wrapping)
+  - Exposes the same `LoginRejection` via `useUser().lastError`
+
+  Returning `null`/`undefined` falls back to the existing error path, so the
+  change is **fully backward compatible** — existing `onFetchUserError`-only
+  configurations behave exactly as before.
+
+  New exports:
+
+  - `LoginRejection` (class, with `LoginRejection.is` type guard)
+  - `LoginErrorPhase`, `TranslateLoginErrorContext`, `TranslateLoginErrorFn` (types)
+  - `SWRLoginConfig.translateLoginError` (optional config field)
+
 ## 0.11.0
 
 ### Minor Changes

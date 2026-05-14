@@ -37,6 +37,7 @@
 - 📦 **100% TypeScript** — 完整泛型、每个 API 都有 JSDoc，AI 编程助手友好
 - 🎯 **框架无关内核** — React 绑定在 `@swr-login/react`，核心逻辑不含 UI 代码
 - 🔗 **多步骤登录** — 内置多步骤交互式登录流程支持（MFA、短信验证码、班级码登录等）
+- 🌐 **统一登录错误翻译** — 一个 `translateLoginError` 钩子覆盖插件登录、`afterAuth`、登录期 `fetchUser` 与 SWR 后台 revalidate；"错误码 × 业务变体 → 文案"矩阵单一真相源
 
 ## 快速开始
 
@@ -253,6 +254,79 @@ function App() {
   );
 }
 ```
+
+### `translateLoginError` —— 统一登录错误翻译
+
+一个钩子拦截**整条登录链路**的所有错误：插件登录、`afterAuth`、登录期 `fetchUser`，以及 SWR 后台 revalidate；在错误暴露到业务层前，统一翻译为 `LoginRejection` 对象。
+
+目标：**单一真相源**——把"错误码 × 业务变体（如 teacher/student）→ 文案"的二维矩阵收敛到一个函数里，不再在 `onPreReset`、`afterAuth`、`LoginForm.catch`、`onFetchUserError` 各写一遍。
+
+```ts
+import { LoginRejection, createAuthConfig } from 'swr-login';
+
+const config = createAuthConfig({
+  // ...adapter, plugins, fetchUser, afterAuth...
+
+  translateLoginError: (error, ctx) => {
+    // ctx.phase: 'plugin_login' | 'after_auth' | 'fetch_user' | 'revalidate'
+    // ctx.loginContext: 透传自 `login(creds, { context })`；revalidate 阶段为 undefined
+    // ctx.pluginName: plugin_login / after_auth 阶段有值
+    const variant = (ctx.loginContext as { variant?: 'teacher' | 'student' })?.variant ?? 'teacher';
+    const code = matchHttpCode(error); // 业务侧 helper
+
+    if (code === 112) {
+      return new LoginRejection(
+        variant === 'student' ? '该学校已被禁用，请联系老师' : '该学校已被禁用，请联系平台管理员',
+        { reason: 'school_disabled', variant, code: 112 },
+      );
+    }
+    if (code === 113) {
+      return new LoginRejection(
+        variant === 'student' ? '该账号已被禁用，请联系老师' : '该账号已被禁用，请联系学校管理员',
+        { reason: 'account_disabled', variant, code: 113 },
+      );
+    }
+    return null; // 不识别 → 回退到旧错误路径
+  },
+});
+```
+
+**当翻译器返回 `LoginRejection` 时，库保证：**
+
+1. 自动清空 token（`tokenManager.clearTokens()`）
+2. 状态机切换到 `unauthenticated`
+3. **跳过** `onFetchUserError`（避免重复处理）
+4. `login()` 以该 `LoginRejection` 为 reject 值，**不再被任何包装**
+5. `useUser().lastError` 暴露同一个 `LoginRejection`
+
+**业务侧 catch 简化为单一分支：**
+
+```tsx
+try {
+  await login(credentials, { context: { variant: 'teacher' } });
+} catch (err) {
+  if (LoginRejection.is(err)) {
+    setError({ message: err.message }); // 文案已根据 variant 翻译好
+    return;
+  }
+  // 真正的非业务错误（网络、密码错误等）
+  setError({ message: '网络异常，请稍后重试' });
+}
+```
+
+**配置矩阵：**
+
+| 配置组合 | 命中 | 未命中 / 未配置 |
+|---------|------|----------------|
+| 仅 `translateLoginError` | 自动清 token + `unauthenticated`；`login()` 以 `LoginRejection` reject | 原始错误冒泡 / SWR 默认行为 |
+| `translateLoginError` + `onFetchUserError` | 翻译器优先；**跳过** `onFetchUserError` | `onFetchUserError` 与今日完全一致 |
+| 仅 `onFetchUserError`（旧用法） | — | 行为完全不变 |
+
+**实现约束：**
+
+- 必须是**纯同步**函数；任何 I/O 应在 `afterAuth` 等上游钩子里完成，再 throw
+- 翻译器自身抛错时，库会吞掉异常并 `console.error`，回退到旧路径——一个有 bug 的翻译器永远不会拖垮登录
+- 内部标记 `__swrLoginTranslated` 通过 `Object.defineProperty` 设为不可枚举，不会泄露到 `JSON.stringify` 输出
 
 ### `swrOptions`
 
