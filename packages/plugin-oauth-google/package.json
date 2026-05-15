@@ -1,7 +1,7 @@
 {
-  "name": "@swr-login/plugin-oauth-google",
-  "version": "0.2.10",
-  "description": "Google OAuth 2.0 login plugin for swr-login (supports Popup & Redirect with PKCE)",
+  "name": "@swr-login/method-oauth-google",
+  "version": "1.0.0",
+  "description": "Google OAuth 2.0 + PKCE login method for swr-login v0.9",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -23,12 +23,18 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
+    "test": "vitest run --passWithNoTests",
     "clean": "rm -rf dist"
   },
-  "dependencies": {
-    "@swr-login/core": "workspace:*"
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "swr-login": "workspace:*"
   },
-  "keywords": ["swr-login", "plugin", "google", "oauth", "login"],
+  "dependencies": {
+    "@swr-login/core": "workspace:*",
+    "@swr-login/react": "workspace:*"
+  },
+  "keywords": ["swr-login", "method", "oauth", "google", "pkce"],
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -39,5 +45,15 @@
   "bugs": "https://github.com/tobytovi/swr-login/issues",
   "publishConfig": {
     "access": "public"
+  },
+  "swr-login": {
+    "methodVersion": "1.0",
+    "category": "oauth",
+    "methodId": "swr-login/oauth-google",
+    "compilerCompat": false
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "react": "^19.0.0"
   }
 }

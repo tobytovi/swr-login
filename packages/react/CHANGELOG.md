@@ -1,5 +1,59 @@
 # @swr-login/react
 
+## 0.14.0
+
+### Minor Changes
+
+- **BREAKING**: This is a pre-release alpha for v1.0.0. See [MIGRATION.md](../../MIGRATION.md).
+
+  ## @swr-login/react v0.9.0-alpha.0 — Plugin-as-Hook React Bindings
+
+  ### Breaking Changes
+
+  - **Removed**: `SWRLoginProvider` props (`config`, `adapter`, `plugins`, `fetchUser`, `onLogin`, `onLogout`, `onError`)
+  - **Removed**: `useLogin(pluginId)` — replaced by `useLoginMethod<M>(id)`
+  - **Removed**: `useMultiStepLogin()` — multi-step is now handled within the method itself
+  - **Removed**: `useUser()` — replaced by `useSession<TUser>()`
+  - **Removed**: `useUserChange(handler)` — replaced by `useSessionEvent(handler)`
+  - **Removed**: `useAdapter()` — replaced by `useCredential()`
+  - **Removed**: `useAuthInjector()` — 401 interception now via `Credential.onExpire`
+  - **Removed**: `usePermission()` — use `useSession` + custom logic
+  - **Removed**: `AUTH_KEY` constant — session state is managed by `SessionStore`, not SWR
+  - **Removed**: SWR peer dependency
+  - **Removed**: `translateLoginError` utility
+
+  ### New API
+
+  - **Added**: `<AuthHookRegistry>` — new top-level provider (accepts `credential`, `methods`, `fetchSession`, `onSessionChange`, `security`)
+  - **Added**: `SWRLoginProvider` kept as deprecated alias for `AuthHookRegistry` (removed in v1.0)
+  - **Added**: `useSession<TUser>()` — `useSyncExternalStore`-based, returns `{ user, status, mutate }`
+  - **Added**: `useLoginMethod<M extends LoginMethod>(id)` — three-generic Handle inference
+  - **Added**: `useLoginMethods(filter?)` — returns `LoginMethod[]` with slot/enabledOnly filtering
+  - **Added**: `useAuthInternal()` — framework primitives for method authors (dev-mode depth check)
+  - **Added**: `useSessionEvent(handler)` — ref-wrapped handler for stable subscriptions
+  - **Added**: `useLogout()` — returns `{ logout, isPending }`; clears credential + publishes `logout` event
+  - **Added**: `useCredential()` — returns current `Credential` instance
+  - **Added**: `<MethodSlotList>` / `<MethodSlot>` — internal components ensuring stable Hook order
+  - **Added**: `<Slot name="...">` — headless slot component for slot-based method rendering
+  - **Added**: `<AuthGuard>` updated to use `useSession` status enum
+
+  ### Migration
+
+  ```tsx
+  // v0.7
+  const { login, isLoading, error } = useLogin("password");
+  const { user, isAuthenticated, isLoading } = useUser();
+
+  // v0.9
+  const handle = useLoginMethod<typeof passwordMethod>("swr-login/password");
+  const { user, status } = useSession<MyUser>();
+  ```
+
+### Patch Changes
+
+- Updated dependencies
+  - @swr-login/core@0.13.0
+
 ## 0.13.0
 
 ### Minor Changes

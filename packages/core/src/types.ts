@@ -1,721 +1,201 @@
 /**
- * @module @swr-login/core
- * Core type definitions for swr-login authentication library.
+ * @swr-login/core - Public type system (v0.9 Plugin-as-Hook).
+ *
+ * Source of truth for the framework contract. Mirrors RFC §15 附录.
  */
 
-// ─── Auth State ──────────────────────────────────────────────
-
-/** Authentication state machine states */
-export type AuthState =
-  | 'idle'
-  | 'authenticating'
-  | 'authenticated'
-  | 'refreshing'
-  | 'unauthenticated'
-  | 'error';
-
-/** Auth state change event payload */
-export interface AuthStateChange {
-  from: AuthState;
-  to: AuthState;
-  timestamp: number;
-}
-
-// ─── User ────────────────────────────────────────────────────
+// ─── Method ───────────────────────────────────────────────
 
 /**
- * Base user type. Extend via generics for custom fields.
+ * Base shape of the handle returned by `LoginMethod.use()`.
+ *
+ * - `submit` is **optional**: redirect-based or multi-step methods may omit it
+ *   and expose method-specific fields instead.
+ * - `state` is the unified UI state across all methods.
+ */
+export interface BaseLoginMethodHandle<TInput = unknown, TResult = unknown> {
+  submit?: (input: TInput) => Promise<TResult>;
+  state: 'idle' | 'pending' | 'success' | 'error';
+  error?: import('./errors').LoginRejection | Error;
+  reset(): void;
+  cancel?(): void;
+}
+
+/**
+ * Login method metadata used by Slot resolution and registry filtering.
+ *
+ * - `slot` accepts string OR string[] (a method may render in multiple slots).
+ * - `enabled` / `env` are evaluated lazily by `useLoginMethods({ enabledOnly })`.
+ */
+export interface LoginMethodMeta {
+  label: string | (() => string);
+  icon?: string | import('react').ComponentType<{ size?: number }>;
+  order?: number;
+  slot?: string | string[];
+  enabled?: boolean | (() => boolean);
+  env?: ('production' | 'development' | 'test')[];
+  multiStep?: boolean;
+  extra?: Record<string, unknown>;
+}
+
+/**
+ * Three-generic LoginMethod: the central contract of v0.9.
+ *
+ * - `use()` MUST follow React Hook rules.
+ * - `onRegistryMount` runs **before any use()** is invoked, in `methods` array
+ *   order, awaited serially. Rejections are caught and reported via
+ *   `publishEvent({ kind: 'external', payload: error })`. Returning a cleanup
+ *   function is honored on Registry unmount.
  *
  * @example
  * ```ts
- * interface MyUser extends User {
- *   company: string;
- *   department: string;
- * }
- * const { user } = useUser<MyUser>();
- * ```
- */
-export interface User {
-  id: string;
-  name?: string;
-  email?: string;
-  avatar?: string;
-  roles?: string[];
-  permissions?: string[];
-  [key: string]: unknown;
-}
-
-// ─── Auth Response ───────────────────────────────────────────
-
-/** Standardized response from any login plugin */
-export interface AuthResponse {
-  /** Authenticated user info */
-  user: User;
-  /** JWT access token */
-  accessToken: string;
-  /** Optional refresh token for silent renewal */
-  refreshToken?: string;
-  /** Token expiration timestamp (ms since epoch) */
-  expiresAt: number;
-}
-
-// ─── Plugin System ───────────────────────────────────────────
-
-/** Plugin type categories */
-export type PluginType =
-  | 'password'
-  | 'oauth'
-  | 'otp'
-  | 'magic-link'
-  | 'web3'
-  | 'passkey'
-  | 'multi-step';
-
-/** Context passed to plugins during lifecycle methods */
-export interface PluginContext {
-  /** Get current access token */
-  getAccessToken: () => string | null;
-  /** Get current refresh token */
-  getRefreshToken: () => string | null;
-  /** Store tokens after successful auth */
-  setTokens: (tokens: {
-    accessToken: string;
-    refreshToken?: string;
-    expiresAt: number;
-  }) => void;
-  /** Clear all stored tokens */
-  clearTokens: () => void;
-  /** Current window origin for postMessage validation */
-  origin: string;
-  /**
-   * Optional, opaque context provided by the business code at `login()` call time
-   * via `LoginCallOptions.context`. The library does not interpret this value;
-   * plugins (or plugin-internal hooks such as `onPreReset`) may read it to
-   * disambiguate "where this login was triggered from" without resorting to
-   * module-level mutable variables.
-   *
-   * Only set during `plugin.login(...)` invocation. Always `undefined` for
-   * `initialize` / `logout` / multi-step `executeStep` / `finalizeAuth` calls
-   * unless future APIs explicitly opt in.
-   *
-   * @example
-   * ```ts
-   * // Caller side
-   * await login(creds, { context: { variant: 'teacher' } });
-   *
-   * // Plugin side
-   * async login(creds, ctx) {
-   *   const variant = (ctx.loginContext as { variant?: string })?.variant;
-   *   // ...
-   * }
-   * ```
-   */
-  loginContext?: unknown;
-}
-
-/**
- * Options accepted by `pluginManager.login()` and the React `useLogin().login()` hook.
- *
- * Currently the only field is `context`, which is stored on the {@link PluginContext}
- * passed to the plugin's `login()` method as `ctx.loginContext`. Plugins can
- * forward this value to their own hooks (for example, `coding-auth-password`
- * exposes it via `PreResetContext.loginContext`).
- *
- * The library treats this value as opaque (`unknown`) — business code is
- * responsible for asserting/typing it.
- */
-export interface LoginCallOptions {
-  /**
-   * Business-defined context, passed through to the plugin via
-   * `PluginContext.loginContext`. The library does not interpret this value.
-   */
-  context?: unknown;
-}
-
-/**
- * Login plugin interface. All auth channel plugins must implement this.
- *
- * @typeParam TCredentials - Plugin-specific login credentials type
- *
- * @example
- * ```ts
- * const myPlugin: SWRLoginPlugin<{ username: string; password: string }> = {
- *   name: 'my-auth',
- *   type: 'password',
- *   async login(credentials, ctx) {
- *     const res = await fetch('/api/login', {
- *       method: 'POST',
- *       body: JSON.stringify(credentials),
- *     });
- *     return res.json();
- *   },
+ * const passwordMethod: LoginMethod<PasswordInput, PasswordResult, PasswordHandle> = {
+ *   id: 'swr-login/password',
+ *   meta: { label: '账号密码', slot: 'primary' },
+ *   use(): PasswordHandle { ... },
  * };
  * ```
  */
-export interface SWRLoginPlugin<TCredentials = unknown> {
-  /** Unique plugin identifier */
-  name: string;
-  /** Plugin category */
-  type: PluginType;
-  /** Optional initialization (e.g., load third-party SDK) */
-  initialize?(ctx: PluginContext): void | Promise<void>;
-  /** Execute login flow, return standardized auth response */
-  login(credentials: TCredentials, ctx: PluginContext): Promise<AuthResponse>;
-  /** Optional logout (e.g., clear third-party session) */
-  logout?(ctx: PluginContext): Promise<void>;
-}
-
-// ─── Multi-Step Plugin ────────────────────────────────────────
-
-/**
- * 单个登录步骤定义。
- * 每个步骤接收上一步的输出（或初始凭证）作为输入，返回数据传递给 UI 或下一步。
- *
- * @typeParam TInput - 步骤输入类型
- * @typeParam TOutput - 步骤输出类型
- */
-export interface LoginStep<TInput = unknown, TOutput = unknown> {
-  /** 步骤唯一名称，用于 UI 路由（如 'verify-code'、'select-student'） */
-  name: string;
-  /** 执行步骤逻辑 */
-  execute(input: TInput, ctx: PluginContext): Promise<TOutput>;
+export interface LoginMethod<
+  TInput = unknown,
+  TResult = unknown,
+  THandle extends BaseLoginMethodHandle<TInput, TResult> = BaseLoginMethodHandle<TInput, TResult>,
+> {
+  readonly id: string;
+  readonly meta: LoginMethodMeta;
+  use(): THandle;
+  onRegistryMount?: (internal: AuthInternalContext) => OnRegistryMountResult;
 }
 
 /**
- * 多步骤登录插件接口。
- * 支持声明式定义多步骤流程，每个步骤之间可以有 UI 交互和页面跳转。
- *
- * 适用场景：班级码登录、MFA、短信验证码、企业 SSO + 部门选择等。
- *
- * @typeParam TInitialInput - 第一步的输入类型（初始凭证）
- *
- * @example
- * ```ts
- * const classCodePlugin: MultiStepLoginPlugin<{ classCode: string }> = {
- *   name: 'class-code',
- *   type: 'multi-step',
- *   steps: [
- *     { name: 'verify-code', execute: async (input, ctx) => { ... } },
- *     { name: 'select-student', execute: async (input, ctx) => { ... } },
- *     { name: 'get-token', execute: async (input, ctx) => { ... } },
- *   ],
- *   async finalizeAuth(lastStepOutput, ctx) { ... },
- *   async login(credentials, ctx) {
- *     throw new Error('Use useMultiStepLogin() for multi-step plugins');
- *   },
- * };
- * ```
+ * Return value from `onRegistryMount`. Can be:
+ *   - a cleanup function (called on Registry unmount)
+ *   - undefined / void (no cleanup)
+ *   - a Promise resolving to either of the above (async onRegistryMount)
  */
-export interface MultiStepLoginPlugin<TInitialInput = unknown>
-  extends SWRLoginPlugin<TInitialInput> {
-  type: 'multi-step';
-  /** 声明所有步骤（按顺序执行） */
-  steps: LoginStep[];
-  /**
-   * 最终步骤完成后，将结果转换为 AuthResponse。
-   * 如果不提供，则最后一个步骤的输出必须符合 AuthResponse 格式。
-   */
-  finalizeAuth?(lastStepOutput: unknown, ctx: PluginContext): Promise<AuthResponse>;
-}
+// biome-ignore lint/suspicious/noConfusingVoidType: void needed for async fn compatibility
+export type OnRegistryMountResult =
+  | (() => void)
+  | undefined
+  // biome-ignore lint/suspicious/noConfusingVoidType: void needed for async fn compatibility
+  | Promise<(() => void) | undefined | void>;
+
+// ─── Credential v1.0 ──────────────────────────────────────
 
 /**
- * 类型守卫：判断插件是否为多步骤插件。
+ * Credential v1.0 — pluggable authentication storage contract.
+ *
+ * Replaces v0.7 `TokenAdapter`. Implementations:
+ *   - `@swr-login/adapter-jwt` — localStorage tokens
+ *   - `@swr-login/adapter-cookie` — HTTP-only cookie session
+ *   - `@swr-login/adapter-session` — sessionStorage tokens
  */
-export function isMultiStepPlugin(plugin: SWRLoginPlugin): plugin is MultiStepLoginPlugin {
-  return plugin.type === 'multi-step' && 'steps' in plugin;
+export interface Credential {
+  readonly version: '1.0';
+  /** Synchronous probe — must NOT perform I/O. */
+  hasAuth(): boolean;
+  /** Drop persisted credential. */
+  clear(): Promise<void>;
+  /** Optional: bearer token accessor for HTTP authorization headers. */
+  getAccessToken?(): string | null;
+  /**
+   * Subscribe to credential mutations (e.g. cross-tab sync, manual refresh).
+   * Return an unsubscribe function.
+   */
+  subscribe(listener: () => void): () => void;
+  /**
+   * Optional: 401 interceptor entry-point. When invoked, the framework will
+   * publish `{ kind: 'session_lost' }` and clear local session state.
+   */
+  onExpire?: () => void;
 }
 
-// ─── Auth Injector ───────────────────────────────────────────
+// ─── Internal Context (exposed via useAuthInternal) ────────
 
 /**
- * 从外部注入登录态到 swr-login 体系。
- * 适用于多步骤登录、第三方 SDK 登录等无法通过插件 login() 完成的场景。
+ * Framework primitives exposed to method authors.
+ *
+ * MUST only be accessed inside `LoginMethod.use()` or `onRegistryMount`.
+ * Dev-mode warns if `useAuthInternal()` is called outside method scope.
  */
-export interface AuthInjector {
+export interface AuthInternalContext {
+  credential: Credential;
+  /** Re-fetch session via `fetchSession`. */
+  refreshSession: () => Promise<void>;
+  /** Publish an auth event to all subscribers (logged-in tabs included). */
+  publishEvent: (event: AuthEvent) => void;
+  /** Aborted when the entire `<AuthHookRegistry>` unmounts. */
+  registrySignal: AbortSignal;
   /**
-   * 注入外部登录态，使 swr-login 全局状态感知到登录。
-   * 会自动触发 token 存储、状态机转换、事件发射和缓存更新。
+   * Create a method-scoped AbortController. Recommended for in-flight
+   * `submit()` cancellation.
    */
-  injectAuth(response: AuthResponse): Promise<void>;
-
-  /**
-   * 从外部触发登出，清除所有登录态。
-   */
-  injectLogout(): Promise<void>;
+  createMethodAbort: () => AbortController;
 }
 
-// ─── After Auth Context ──────────────────────────────────────
+// ─── Events ───────────────────────────────────────────────
 
-/**
- * Context passed to the `afterAuth` hook after a successful plugin login,
- * before `fetchUser` is called.
- *
- * Use this to perform role-based validation, redirect logic, analytics,
- * or to skip `fetchUser` entirely for certain login flows.
- */
-export interface AfterAuthContext {
-  /** Name of the plugin that performed the login */
-  pluginName: string;
-  /** The AuthResponse returned by the plugin's login() method */
-  authResponse: AuthResponse;
-  /**
-   * Call this to skip the subsequent `fetchUser` call.
-   * When called, `login()` will resolve immediately with the AuthResponse
-   * without invoking `fetchUser` or writing user data to the SWR cache.
-   */
-  skipFetchUser: () => void;
-  /**
-   * The opaque business context forwarded from `login(credentials, { context })`.
-   *
-   * Same value as `PluginContext.loginContext`. Use it to disambiguate
-   * "where this login was triggered from" (e.g. which entry variant) without
-   * resorting to module-level mutable variables.
-   *
-   * @example
-   * ```ts
-   * afterAuth: async ({ loginContext, skipFetchUser }) => {
-   *   const variant = (loginContext as { variant?: string })?.variant;
-   *   if (variant === 'student') return; // skip adminCheckAuth for students
-   *   const res = await adminCheckAuth();
-   *   // ...
-   * },
-   * ```
-   */
-  loginContext?: unknown;
-}
+export type AuthEventKind = 'login' | 'logout' | 'session_lost' | 'session_refresh' | 'external';
 
-// ─── Cache Adapter ───────────────────────────────────────────
-
-/**
- * Cache adapter interface for decoupling from SWR.
- * Default implementation uses SWR; can be swapped for TanStack Query.
- */
-export interface CacheAdapter {
-  /** React Hook to access auth state */
-  useAuth<T extends User = User>(): {
-    user: T | null;
-    isLoading: boolean;
-    mutate: (data?: T | null) => Promise<void>;
-  };
-  /** Set user data in cache */
-  setUser<T extends User = User>(user: T): Promise<void>;
-  /** Clear user data from cache */
-  clearUser(): Promise<void>;
-  /** Force revalidation of user data */
-  revalidate(): Promise<void>;
-}
-
-// ─── Token Adapter ───────────────────────────────────────────
-
-/**
- * Token storage adapter interface.
- * Implementations: JWT (localStorage/sessionStorage/memory), Session, Cookie.
- */
-export interface TokenAdapter {
-  /** Retrieve stored access token */
-  getAccessToken(): string | null;
-  /** Store access token */
-  setAccessToken(token: string): void;
-  /** Retrieve stored refresh token */
-  getRefreshToken(): string | null;
-  /** Store refresh token */
-  setRefreshToken(token: string): void;
-  /** Retrieve token expiration timestamp */
-  getExpiresAt(): number | null;
-  /** Store token expiration timestamp */
-  setExpiresAt(expiresAt: number): void;
-  /** Clear all stored tokens */
-  clear(): void;
-  /**
-   * Synchronously check whether the adapter currently holds a valid auth credential.
-   *
-   * This is a **fast, synchronous** check intended for UI-layer decisions
-   * (e.g. conditional rendering, route guards) where you need to know
-   * "is there a token at all?" without triggering a network request.
-   *
-   * **Optional.** If not implemented, the framework falls back to
-   * `getAccessToken() !== null`.
-   *
-   * Adapter authors can override this to add richer checks, e.g.:
-   * - Cookie-based adapters may check multiple cookie keys
-   * - JWT adapters may also verify the token is not expired
-   *
-   * @returns `true` if a usable auth credential exists, `false` otherwise
-   */
-  hasAuth?(): boolean;
-}
-
-// ─── Login Error Translation ─────────────────────────────────
-
-/**
- * The phase in which {@link SWRLoginConfig.translateLoginError} is invoked.
- *
- * - `plugin_login` — A plugin's `login()` (single-step) or step execution /
- *   `finalizeAuth` (multi-step) threw. Includes plugin-internal hook errors
- *   such as `coding-auth-password`'s `onPreReset` rejection.
- * - `after_auth`   — The user-supplied `afterAuth` hook threw.
- * - `fetch_user`   — `fetchUser` threw during the login flow (i.e. the
- *   `validateUserOnLogin` step right after the plugin succeeded).
- * - `revalidate`   — `fetchUser` threw outside of any active `login()` call,
- *   typically during SWR background revalidation (focus / reconnect /
- *   polling / manual `mutate()`). `loginContext` is always `undefined` here.
- */
-export type LoginErrorPhase = 'plugin_login' | 'after_auth' | 'fetch_user' | 'revalidate';
-
-/**
- * Context handed to {@link SWRLoginConfig.translateLoginError}.
- *
- * @remarks
- * The library does not interpret `loginContext` — it is forwarded verbatim
- * from the `login(creds, { context })` call site (and is `undefined` for
- * the `revalidate` phase since no `login()` call is associated).
- */
-export interface TranslateLoginErrorContext {
-  /** Which phase of the login pipeline raised the error. */
-  phase: LoginErrorPhase;
-  /**
-   * Opaque business context, mirroring `LoginCallOptions.context`.
-   * `undefined` during `'revalidate'` phase.
-   */
-  loginContext?: unknown;
-  /**
-   * Name of the plugin that triggered the error.
-   * Available for `'plugin_login'` and `'after_auth'` phases; `undefined`
-   * for `'fetch_user'` and `'revalidate'` phases.
-   */
-  pluginName?: string;
-}
-
-/**
- * Signature of the unified login-error translator.
- *
- * Implementations should be **synchronous, side-effect-free pure functions**
- * that map raw library/network errors to a canonical {@link LoginRejection}.
- * Any side effects (token clearing, state transitions, cache eviction) are
- * performed by the library *after* a `LoginRejection` is returned.
- *
- * Returning `null` / `undefined` defers to the legacy error path (e.g.
- * `onFetchUserError`, plain rejection of `login()`).
- */
-export type TranslateLoginErrorFn = (
-  error: unknown,
-  ctx: TranslateLoginErrorContext,
-) => import('./errors').LoginRejection | null | undefined;
-
-/** Security configuration options */
-export interface SecurityConfig {
-  /** Enable cross-tab sync via BroadcastChannel (default: true) */
-  enableBroadcastSync?: boolean;
-  /** Clear tokens when page is hidden (default: false) */
-  clearOnHidden?: boolean;
-  /** Delay before clearing tokens on hidden (ms, default: 300000) */
-  clearOnHiddenDelay?: number;
-}
-
-/**
- * SWR options that can be customized by the consumer.
- *
- * Only a safe subset of SWR options is exposed to prevent consumers from
- * accidentally overriding internal behavior (e.g. `fetcher`, `fallbackData`).
- *
- * @example
- * ```ts
- * createAuthConfig({
- *   // ...
- *   swrOptions: {
- *     revalidateOnFocus: false,    // 禁用窗口聚焦时重新验证
- *     revalidateOnReconnect: false, // 禁用网络恢复时重新验证
- *     dedupingInterval: 5000,       // 5 秒内去重
- *   },
- * });
- * ```
- */
-export interface SWROptions {
-  /**
-   * Revalidate when window gets focused.
-   * @default true
-   */
-  revalidateOnFocus?: boolean;
-  /**
-   * Revalidate when the browser regains a network connection (via `navigator.onLine`).
-   * @default true
-   */
-  revalidateOnReconnect?: boolean;
-  /**
-   * Dedupe requests with the same key in this time span (in milliseconds).
-   * @default 2000
-   */
-  dedupingInterval?: number;
-  /**
-   * Throttle focus revalidation events in this time span (in milliseconds).
-   * @default 5000
-   */
-  focusThrottleInterval?: number;
-  /**
-   * Polling interval in milliseconds. Set to 0 to disable.
-   * @default 0
-   */
-  refreshInterval?: number;
-}
-
-/**
- * SWRLoginProvider configuration.
- *
- * @example
- * ```tsx
- * <SWRLoginProvider
- *   config={{
- *     adapter: JWTAdapter({ storage: 'localStorage' }),
- *     plugins: [PasswordPlugin({ loginUrl: '/api/login' })],
- *     fetchUser: (token) => fetch('/api/me', {
- *       headers: { Authorization: `Bearer ${token}` },
- *     }).then(r => r.json()),
- *   }}
- * >
- *   <App />
- * </SWRLoginProvider>
- * ```
- */
-export interface SWRLoginConfig {
-  /** Token storage adapter */
-  adapter: TokenAdapter;
-  /** Registered auth plugins */
-  plugins: SWRLoginPlugin[];
-  /**
-   * Optional: custom function to fetch user data after a successful login
-   * or during SWR background revalidation.
-   *
-   * Receives a context object containing:
-   * - `token` — the current access token
-   * - `loginContext` — the opaque business context forwarded from
-   *   `login(credentials, { context })`. Only set during an explicit `login()`
-   *   call; `undefined` during SWR background revalidation (focus / reconnect
-   *   / polling / manual `mutate()`).
-   *
-   * @example
-   * ```ts
-   * fetchUser: async ({ token, loginContext }) => {
-   *   const variant = (loginContext as { variant?: string })?.variant;
-   *   if (variant === 'student') {
-   *     const res = await studentInfoGet();
-   *     return { id: res.user_id, role: 'student' };
-   *   }
-   *   // default: check admin role
-   *   const res = await adminCheckAuth();
-   *   return { id: getCookie('qqgameid'), role: 'teacher' };
-   * },
-   * ```
-   */
-  fetchUser?: (context: { token: string; loginContext?: unknown }) => Promise<User>;
-  /** Optional: custom cache adapter (default: SWR) */
-  cacheAdapter?: CacheAdapter;
-  /** Callback fired after successful login */
-  onLogin?: (user: User) => void;
-  /** Callback fired after logout */
-  onLogout?: () => void;
-  /** Callback fired on auth errors */
-  onError?: (error: Error) => void;
-  /**
-   * Hook invoked after a successful plugin login, before `fetchUser` is called.
-   *
-   * Use this to perform role-based validation, redirect to a different app,
-   * or skip `fetchUser` for certain login flows.
-   *
-   * - Return normally → continue to `fetchUser` (if configured)
-   * - Call `context.skipFetchUser()` → skip `fetchUser`, `login()` resolves immediately
-   * - Throw an error → tokens are cleared, `login()` rejects with that error
-   *
-   * Only runs during `login()` calls, not during SWR background revalidation.
-   *
-   * @example
-   * ```ts
-   * afterAuth: async ({ pluginName, authResponse, skipFetchUser }) => {
-   *   if (pluginName === 'coding-password') {
-   *     const role = await checkUserRole(authResponse.accessToken);
-   *     if (role === 'teacher') {
-   *       skipFetchUser(); // teachers don't need studentInfoGet
-   *       window.location.href = '/teacher-admin';
-   *       return;
-   *     }
-   *   }
-   *   // default: continue to fetchUser
-   * },
-   * ```
-   */
-  afterAuth?: (context: AfterAuthContext) => Promise<void>;
-  /**
-   * Whether to automatically call `fetchUser` after a successful plugin login
-   * to validate the user's status before considering the login complete.
-   *
-   * When enabled (default), `login()` will reject if `fetchUser` throws,
-   * allowing you to catch "account disabled" or similar errors in one place.
-   *
-   * @default true
-   */
-  validateUserOnLogin?: boolean;
-  /**
-   * Callback invoked when `fetchUser` throws an error (both during login
-   * validation and SWR background revalidation).
-   *
-   * Return a strategy string to control how the framework handles the error:
-   * - `'retry'`  — Re-invoke `fetchUser` once (max 1 retry to prevent loops).
-   * - `'logout'` — Clear tokens and transition to `unauthenticated`.
-   * - `'ignore'` — Keep current state; the error is stored in `lastError`.
-   *
-   * If not provided, the default SWR behavior applies (`shouldRetryOnError: false`,
-   * error is passed through to `useUser().error`).
-   *
-   * @remarks
-   * When {@link SWRLoginConfig.translateLoginError} is configured *and*
-   * produces a `LoginRejection` for the same error, this callback is
-   * **skipped** to avoid double handling (the translator already implies a
-   * deterministic terminal state). Errors that the translator does not
-   * recognize (returns `null`/`undefined`) still flow into this callback.
-   */
-  onFetchUserError?: (error: Error) => 'retry' | 'logout' | 'ignore';
-  /**
-   * Unified login-error translator.
-   *
-   * Invoked on every error raised inside the login pipeline (plugin login,
-   * `afterAuth`, login-time `fetchUser`) **and** on every SWR
-   * background-revalidation error, *before* the legacy error path runs.
-   *
-   * Contract:
-   * - Return a {@link LoginRejection} → the library treats it as a confirmed
-   *   business-level terminal failure:
-   *     • Tokens are cleared, state machine transitions to `unauthenticated`.
-   *     • `onFetchUserError` is **not** invoked for this error.
-   *     • `login()` rejects with the returned `LoginRejection` (no further
-   *       wrapping).
-   *     • `useUser().error` exposes the `LoginRejection`.
-   * - Return `null` / `undefined` → the library falls back to the existing
-   *   error path (full backward compatibility).
-   *
-   * The translator must be a **synchronous, pure** function. If it throws,
-   * the library swallows the exception, logs via `console.error`, and falls
-   * back to the legacy path (so a buggy translator can never break login).
-   *
-   * @example
-   * ```ts
-   * translateLoginError: (err, ctx) => {
-   *   const variant = (ctx.loginContext as { variant?: 'teacher' | 'student' })?.variant ?? 'teacher';
-   *   const code = matchHttpCode(err); // user-supplied helper
-   *   if (code === 112) {
-   *     return new LoginRejection(
-   *       variant === 'student' ? 'School is disabled — please contact your teacher'
-   *                              : 'School is disabled — please contact the administrator',
-   *       { reason: 'school_disabled', variant, code: 112 }
-   *     );
-   *   }
-   *   return null;
-   * }
-   * ```
-   */
-  translateLoginError?: TranslateLoginErrorFn;
-  /** Security options */
-  security?: SecurityConfig;
-  /**
-   * SWR options for the internal `useUser()` hook.
-   *
-   * Use this to control revalidation behavior without wrapping in a separate `SWRConfig`.
-   * Only a safe subset of SWR options is exposed — internal options like `fetcher` and
-   * `shouldRetryOnError` are managed by swr-login and cannot be overridden.
-   *
-   * @default { revalidateOnFocus: true, revalidateOnReconnect: true }
-   *
-   * @example
-   * ```ts
-   * createAuthConfig({
-   *   // ...adapter, plugins, fetchUser...
-   *   swrOptions: {
-   *     revalidateOnFocus: false, // 禁用窗口聚焦时自动 revalidate
-   *   },
-   * });
-   * ```
-   */
-  swrOptions?: SWROptions;
-}
-
-// ─── User Change Source ──────────────────────────────────────
-
-/**
- * The source of a `user` value change observed by `useUser()`.
- *
- * Consumers can use this to distinguish *why* the user changed, which is often
- * needed to decide whether to show a "welcome" toast, auto-redirect, fire
- * analytics, etc.
- *
- * - `initial`    — Provider first mount; `fetchUser` resolved for the first time.
- *                  Fires at most once per Provider lifecycle.
- * - `login`      — Explicit `login()` call (including multi-step finalize and
- *                  external injection via `useAuthInjector`).
- * - `logout`     — Explicit `logout()` call or external `injectLogout()`.
- * - `revalidate` — SWR background revalidation (focus / reconnect / polling /
- *                  manual `mutate()`) produced a different user.
- * - `external`   — Cross-tab sync via `BroadcastChannel` / storage events.
- */
-export type UserChangeSource = 'initial' | 'login' | 'logout' | 'revalidate' | 'external';
-
-/**
- * Event payload describing a user value transition.
- *
- * @typeParam T - Concrete user type (defaults to base `User`)
- */
-export interface UserChangeEvent<T extends User = User> {
-  /** Why the user changed */
-  source: UserChangeSource;
-  /** The new user value (or `null` after logout) */
-  user: T | null;
-  /**
-   * The previous user value.
-   *
-   * `undefined` means "the Provider had not yet observed any user value"
-   * (typical for the first `initial` event). `null` means "was unauthenticated".
-   */
-  previousUser: T | null | undefined;
-  /** Wall-clock timestamp (`Date.now()`) when the event was emitted */
-  timestamp: number;
-}
-
-// ─── Events ──────────────────────────────────────────────────
-
-/** Auth event types */
-export type AuthEventType =
-  | 'login'
-  | 'logout'
-  | 'refresh'
-  | 'error'
-  | 'state-change'
-  | 'token-expired'
-  | 'user-change';
-
-/** Auth event payloads */
-export interface AuthEventMap {
-  login: { user: User };
-  logout: undefined;
-  refresh: { accessToken: string; expiresAt: number };
-  error: { error: Error };
-  'state-change': AuthStateChange;
-  /**
-   * Emitted whenever `useUser()`'s underlying user value transitions.
-   *
-   * Unlike `login` / `logout`, this event is *derived* (fired by the React
-   * layer after observing the SWR cache change) and carries a `source` field
-   * so consumers can react differently to user-initiated vs. passive changes.
-   */
-  'user-change': UserChangeEvent;
-  'token-expired': undefined;
-}
-
-// ─── Broadcast ───────────────────────────────────────────────
-
-/** Cross-tab broadcast message types */
-export type BroadcastMessageType = 'LOGIN' | 'LOGOUT' | 'TOKEN_REFRESH';
-
-/** Cross-tab broadcast message */
-export interface BroadcastMessage {
-  type: BroadcastMessageType;
+export interface AuthEvent {
+  kind: AuthEventKind;
+  methodId?: string;
   payload?: unknown;
+  /** Auto-injected by event-bus when omitted. */
   timestamp: number;
-  tabId: string;
 }
+
+/**
+ * High-level event delivered to `onSessionChange` and `useSessionEvent`.
+ * Carries the user transition delta in addition to the raw event metadata.
+ */
+export interface SessionChangeEvent {
+  kind: AuthEventKind;
+  user: unknown | null;
+  previousUser: unknown | null;
+  methodId?: string;
+  timestamp: number;
+}
+
+// ─── Session Store ────────────────────────────────────────
+
+export type SessionStatus = 'loading' | 'authenticated' | 'unauthenticated';
+
+export interface SessionSnapshot<TUser = unknown> {
+  user: TUser | null;
+  status: SessionStatus;
+}
+
+// ─── Registry Props ───────────────────────────────────────
+
+/**
+ * Cross-tab sync / hidden-clear configuration.
+ */
+export interface SecurityConfig {
+  enableBroadcastSync?: boolean;
+  clearOnHidden?: boolean;
+  broadcastChannel?: string;
+}
+
+/**
+ * Props for `<AuthHookRegistry>` (formerly `<SWRLoginProvider>`).
+ *
+ * - `methods` — declarative array; ID set MUST be stable across renders.
+ * - `fetchSession` — called after every successful login / refresh.
+ * - `onSessionChange` — sync OR async; awaited if a Promise is returned.
+ */
+export interface AuthHookRegistryProps {
+  credential: Credential;
+  methods: LoginMethod[];
+  fetchSession?: (token: { accessToken: string | null }) => Promise<unknown>;
+  onSessionChange?: (event: SessionChangeEvent) => void | Promise<void>;
+  security?: SecurityConfig;
+  children: import('react').ReactNode;
+}
+
+// ─── Re-export legacy-friendly type aliases for migration ──
+
+/** @deprecated Use `SessionChangeEvent`. Will be removed in v1.0. */
+export type UserChangeEvent = SessionChangeEvent;
+/** @deprecated Use `AuthEventKind`. Will be removed in v1.0. */
+export type UserChangeSource = AuthEventKind;

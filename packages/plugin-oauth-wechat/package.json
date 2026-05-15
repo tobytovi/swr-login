@@ -1,7 +1,7 @@
 {
-  "name": "@swr-login/plugin-oauth-wechat",
-  "version": "0.2.10",
-  "description": "WeChat OAuth login plugin for swr-login (QR code scan & H5 web authorization)",
+  "name": "@swr-login/method-oauth-wechat",
+  "version": "1.0.0",
+  "description": "WeChat OAuth login method for swr-login v0.9 (H5 + QR code)",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -23,12 +23,18 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
+    "test": "vitest run --passWithNoTests",
     "clean": "rm -rf dist"
   },
-  "dependencies": {
-    "@swr-login/core": "workspace:*"
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "swr-login": "workspace:*"
   },
-  "keywords": ["swr-login", "plugin", "wechat", "weixin", "oauth", "qrcode"],
+  "dependencies": {
+    "@swr-login/core": "workspace:*",
+    "@swr-login/react": "workspace:*"
+  },
+  "keywords": ["swr-login", "method", "oauth", "wechat", "weixin"],
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -39,5 +45,15 @@
   "bugs": "https://github.com/tobytovi/swr-login/issues",
   "publishConfig": {
     "access": "public"
+  },
+  "swr-login": {
+    "methodVersion": "1.0",
+    "category": "oauth",
+    "methodId": "swr-login/oauth-wechat",
+    "compilerCompat": false
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "react": "^19.0.0"
   }
 }

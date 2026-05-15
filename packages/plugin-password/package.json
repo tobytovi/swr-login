@@ -1,7 +1,7 @@
 {
-  "name": "@swr-login/plugin-password",
-  "version": "0.2.10",
-  "description": "Username/password login plugin for swr-login",
+  "name": "@swr-login/method-password",
+  "version": "1.0.0",
+  "description": "Username/password login method for swr-login v0.9 (Plugin-as-Hook)",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -23,12 +23,18 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
+    "test": "vitest run --passWithNoTests",
     "clean": "rm -rf dist"
   },
-  "dependencies": {
-    "@swr-login/core": "workspace:*"
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "swr-login": "workspace:*"
   },
-  "keywords": ["swr-login", "plugin", "password", "login"],
+  "dependencies": {
+    "@swr-login/core": "workspace:*",
+    "@swr-login/react": "workspace:*"
+  },
+  "keywords": ["swr-login", "method", "password", "login"],
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -39,5 +45,15 @@
   "bugs": "https://github.com/tobytovi/swr-login/issues",
   "publishConfig": {
     "access": "public"
+  },
+  "swr-login": {
+    "methodVersion": "1.0",
+    "category": "credential",
+    "methodId": "swr-login/password",
+    "compilerCompat": false
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "react": "^19.0.0"
   }
 }

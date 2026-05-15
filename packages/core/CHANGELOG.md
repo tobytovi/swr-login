@@ -1,5 +1,42 @@
 # @swr-login/core
 
+## 0.13.0
+
+### Minor Changes
+
+- **BREAKING**: This is a pre-release alpha for v1.0.0. See [MIGRATION.md](../../MIGRATION.md).
+
+  ## @swr-login/core v0.9.0-alpha.0 — Plugin-as-Hook Architecture
+
+  ### Breaking Changes
+
+  - **Removed**: `SWRLoginPlugin`, `PluginManager`, `TokenManager`, `AuthStateMachine`, `AuthEventEmitter` (v0.7 internal classes)
+  - **Removed**: `createAuthConfig` config schema (v0.7 plugin-based config)
+  - **Removed**: `MultiStepLoginPlugin`, `StepExecutionError`, `StepOutOfRangeError`, `PluginNotFoundError`, `PluginInitError`, `PluginTypeMismatchError`, `TokenExpiredError`, `TokenRefreshError`
+  - **Removed**: `isMultiStepPlugin` utility
+  - **Removed**: SWR peer dependency (`swr` is no longer required)
+
+  ### New API
+
+  - **Added**: `LoginMethod<TInput, TResult, THandle>` — three-generic method contract
+  - **Added**: `BaseLoginMethodHandle` — base handle interface with `state`, `error`, `reset`, optional `submit`, `cancel`
+  - **Added**: `Credential` v1.0 interface — `hasAuth`, `clear`, `subscribe`, `onExpire?`, `getAccessToken?`
+  - **Added**: `AuthInternalContext` — framework primitives exposed to method authors via `useAuthInternal()`
+  - **Added**: `SessionStore` — `useSyncExternalStore`-compatible store; states: `loading | authenticated | unauthenticated`
+  - **Added**: `EventBus` — type-safe pub/sub with `kind` array subscription support; auto-injects `timestamp`
+  - **Added**: `MethodRegistry` / `buildMethodRegistry` — id uniqueness + namespace validation + dev-mode stability check
+  - **Added**: `defineLoginMethod` / `defineLazyLoginMethod` — method authoring helpers
+  - **Added**: `AuthEvent.timestamp` (required), `SessionChangeEvent.timestamp` (required)
+  - **Added**: `LoginRejection.code` (machine code) + `LoginRejection.reason` (semantic name)
+  - **Added**: `LoginMethodMeta.slot` now accepts `string | string[]`
+  - **Added**: `SecurityConfig` type for `AuthHookRegistryProps.security` block
+  - **Added**: `checkIdSetStability` — dev-mode id-set stability check
+  - **Added**: PKCE + CSRF security utilities (moved from react package)
+
+  ### Migration
+
+  See [MIGRATION.md](../../MIGRATION.md) for a complete v0.7 → v0.9 guide.
+
 ## 0.12.0
 
 ### Minor Changes

@@ -1,0 +1,59 @@
+{
+  "name": "@swr-login/method-mock",
+  "version": "1.0.0",
+  "description": "Mock login method for swr-login v0.9 (development & test fixtures)",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": ["dist"],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run --passWithNoTests",
+    "clean": "rm -rf dist"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "swr-login": "workspace:*"
+  },
+  "dependencies": {
+    "@swr-login/core": "workspace:*",
+    "@swr-login/react": "workspace:*"
+  },
+  "keywords": ["swr-login", "method", "mock", "development"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tobytovi/swr-login",
+    "directory": "packages/method-mock"
+  },
+  "homepage": "https://github.com/tobytovi/swr-login#readme",
+  "bugs": "https://github.com/tobytovi/swr-login/issues",
+  "publishConfig": {
+    "access": "public"
+  },
+  "swr-login": {
+    "methodVersion": "1.0",
+    "category": "mock",
+    "methodId": "swr-login/mock",
+    "compilerCompat": true
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "react": "^19.0.0"
+  }
+}

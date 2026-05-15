@@ -1,5 +1,53 @@
 # swr-login
 
+## 0.9.0
+
+### Minor Changes
+
+- **BREAKING**: This is a pre-release alpha for v1.0.0. See [MIGRATION.md](./MIGRATION.md).
+
+  ## swr-login v0.9.0-alpha.0 — Sub-path Export Rename
+
+  ### Breaking Changes
+
+  - **Removed**: `swr-login/plugins/password` → use `swr-login/methods/password`
+  - **Removed**: `swr-login/plugins/oauth-github` → use `swr-login/methods/oauth-github`
+  - **Removed**: `swr-login/plugins/oauth-google` → use `swr-login/methods/oauth-google`
+  - **Removed**: `swr-login/plugins/oauth-wechat` → use `swr-login/methods/oauth-wechat`
+  - **Removed**: `swr-login/plugins/passkey` → use `swr-login/methods/passkey`
+  - **Removed**: `swr-login/presets` — no longer needed (methods replace presets)
+  - **Removed**: `swr` peer dependency
+
+  ### New Exports
+
+  - **Added**: `swr-login/methods/password`
+  - **Added**: `swr-login/methods/mock`
+  - **Added**: `swr-login/methods/oauth-github`
+  - **Added**: `swr-login/methods/oauth-google`
+  - **Added**: `swr-login/methods/oauth-wechat`
+  - **Added**: `swr-login/methods/passkey`
+  - **Updated**: All v0.9 core + react APIs re-exported from the main `swr-login` entry
+
+  ### Migration
+
+  ```ts
+  // v0.7
+  import { PasswordPlugin } from "swr-login/plugins/password";
+
+  // v0.9
+  import {
+    createPasswordMethod,
+    passwordMethod,
+  } from "swr-login/methods/password";
+  ```
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+  - @swr-login/core@0.13.0
+  - @swr-login/react@0.14.0
+
 ## 0.7.1
 
 ### Patch Changes

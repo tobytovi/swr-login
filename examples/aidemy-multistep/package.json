@@ -1,0 +1,28 @@
+{
+  "name": "example-aidemy-multistep",
+  "private": true,
+  "version": "0.0.1",
+  "description": "swr-login v0.9 — Aidemy multi-step method showcase (RFC §8)",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --port 3001",
+    "build": "next build",
+    "start": "next start",
+    "lint": "biome check ."
+  },
+  "dependencies": {
+    "@swr-login/core": "workspace:*",
+    "@swr-login/react": "workspace:*",
+    "@swr-login/adapter-cookie": "workspace:*",
+    "swr-login": "workspace:*",
+    "next": "^15.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.6.0"
+  }
+}

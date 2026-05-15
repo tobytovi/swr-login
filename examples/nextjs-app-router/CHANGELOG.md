@@ -1,5 +1,22 @@
 # example-nextjs-app-router
 
+## 0.0.17
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+  - @swr-login/adapter-jwt@0.3.0
+  - @swr-login/core@0.13.0
+  - @swr-login/method-password@1.0.0
+  - @swr-login/method-oauth-github@1.0.0
+  - @swr-login/method-passkey@1.0.0
+  - @swr-login/react@0.14.0
+  - swr-login@0.9.0
+
 ## 0.0.15
 
 ### Patch Changes

@@ -1,55 +1,92 @@
-import type { TokenAdapter } from '@swr-login/core';
+/**
+ * @swr-login/adapter-session - sessionStorage Credential adapter (v0.9).
+ *
+ * Tokens auto-clear when the browser tab closes. Useful for high-security
+ * SPAs that don't want persistence across tabs.
+ */
+
+import type { Credential } from '@swr-login/core';
 
 export interface SessionAdapterOptions {
-  /** Key prefix (default: 'swr_login') */
+  /** Key prefix (default: `'swr_login'`). */
   prefix?: string;
 }
 
-/**
- * Session storage adapter.
- * Tokens are automatically cleared when the browser tab is closed.
- *
- * @example
- * ```ts
- * import { SessionAdapter } from '@swr-login/adapter-session';
- *
- * const adapter = SessionAdapter();
- * ```
- */
-export function SessionAdapter(options: SessionAdapterOptions = {}): TokenAdapter {
-  const { prefix = 'swr_login' } = options;
-
-  const makeKey = (key: string) => `${prefix}_${key}`;
-
-  const get = (key: string): string | null => {
-    if (typeof sessionStorage === 'undefined') return null;
-    return sessionStorage.getItem(makeKey(key));
-  };
-
-  const set = (key: string, value: string): void => {
-    if (typeof sessionStorage === 'undefined') return;
-    sessionStorage.setItem(makeKey(key), value);
-  };
-
-  const remove = (key: string): void => {
-    if (typeof sessionStorage === 'undefined') return;
-    sessionStorage.removeItem(makeKey(key));
-  };
-
-  return {
-    getAccessToken: () => get('access_token'),
-    setAccessToken: (token) => set('access_token', token),
-    getRefreshToken: () => get('refresh_token'),
-    setRefreshToken: (token) => set('refresh_token', token),
-    getExpiresAt: () => {
-      const val = get('expires_at');
-      return val ? Number(val) : null;
-    },
-    setExpiresAt: (expiresAt) => set('expires_at', String(expiresAt)),
-    clear: () => {
-      remove('access_token');
-      remove('refresh_token');
-      remove('expires_at');
-    },
-  };
+export interface TokenSet {
+  accessToken: string;
+  refreshToken?: string;
+  expiresAt?: number;
 }
+
+export interface SessionCredential extends Credential {
+  setTokens(tokens: TokenSet): void;
+  getRefreshToken(): string | null;
+  getExpiresAt(): number | null;
+}
+
+const KEYS = {
+  accessToken: 'access_token',
+  refreshToken: 'refresh_token',
+  expiresAt: 'expires_at',
+} as const;
+
+export function SessionCredential(options: SessionAdapterOptions = {}): SessionCredential {
+  const { prefix = 'swr_login' } = options;
+  const makeKey = (k: string) => `${prefix}_${k}`;
+  const listeners = new Set<() => void>();
+
+  const has = () => typeof sessionStorage !== 'undefined';
+  const get = (k: string) => (has() ? sessionStorage.getItem(makeKey(k)) : null);
+  const set = (k: string, v: string) => {
+    if (has()) sessionStorage.setItem(makeKey(k), v);
+  };
+  const remove = (k: string) => {
+    if (has()) sessionStorage.removeItem(makeKey(k));
+  };
+
+  const notify = (): void => {
+    for (const fn of Array.from(listeners)) {
+      try {
+        fn();
+      } catch (err) {
+        console.error('[swr-login] SessionCredential listener error:', err);
+      }
+    }
+  };
+
+  const credential: SessionCredential = {
+    version: '1.0',
+    hasAuth: () => Boolean(get(KEYS.accessToken)),
+    clear: async () => {
+      remove(KEYS.accessToken);
+      remove(KEYS.refreshToken);
+      remove(KEYS.expiresAt);
+      notify();
+    },
+    getAccessToken: () => get(KEYS.accessToken),
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    onExpire: undefined,
+
+    setTokens: ({ accessToken, refreshToken, expiresAt }) => {
+      set(KEYS.accessToken, accessToken);
+      if (refreshToken !== undefined) set(KEYS.refreshToken, refreshToken);
+      if (expiresAt !== undefined) set(KEYS.expiresAt, String(expiresAt));
+      notify();
+    },
+    getRefreshToken: () => get(KEYS.refreshToken),
+    getExpiresAt: () => {
+      const v = get(KEYS.expiresAt);
+      return v ? Number(v) : null;
+    },
+  };
+
+  return credential;
+}
+
+/** @deprecated v0.7 alias. Use `SessionCredential`. Will be removed in v1.0. */
+export const SessionAdapter = SessionCredential;

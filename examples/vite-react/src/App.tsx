@@ -1,124 +1,160 @@
-import { JWTAdapter } from '@swr-login/adapter-jwt';
-import { GitHubOAuthPlugin } from '@swr-login/plugin-oauth-github';
-import { GoogleOAuthPlugin } from '@swr-login/plugin-oauth-google';
-import { PasswordPlugin } from '@swr-login/plugin-password';
+/**
+ * swr-login v0.9 — Vite + React Example
+ *
+ * Demonstrates:
+ *   - AuthHookRegistry with password + mock methods
+ *   - useSession, useLoginMethod<M>, useLogout
+ *   - AuthGuard for route protection
+ *   - useSessionEvent for event tracking
+ */
+
 import {
   AuthGuard,
-  SWRLoginProvider,
-  useLogin,
+  AuthHookRegistry,
+  useLoginMethod,
   useLogout,
   useSession,
-  useUser,
+  useSessionEvent,
 } from '@swr-login/react';
 import type React from 'react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { createJWTCredential } from 'swr-login/adapters/jwt';
+import { createMockMethod } from 'swr-login/methods/mock';
+import { createPasswordMethod } from 'swr-login/methods/password';
+import type { PasswordHandle } from 'swr-login/methods/password';
 
-// ─── Configuration ───────────────────────────────────────────
+// ─── Credential & Methods ──────────────────────────────────────
 
-const config = {
-  adapter: JWTAdapter({ storage: 'localStorage' }),
-  plugins: [
-    PasswordPlugin({ loginUrl: '/api/auth/login', logoutUrl: '/api/auth/logout' }),
-    GoogleOAuthPlugin({
-      clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID ?? 'your-google-client-id',
-      tokenEndpoint: '/api/auth/google/callback',
-    }),
-    GitHubOAuthPlugin({
-      clientId: import.meta.env.VITE_GITHUB_CLIENT_ID ?? 'your-github-client-id',
-      tokenEndpoint: '/api/auth/github/callback',
-    }),
-  ],
-  fetchUser: async ({ token }: { token: string }) => {
-    const res = await fetch('/api/me', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) throw new Error('Failed to fetch user');
-    return res.json();
-  },
-  onLogin: (user: { name?: string }) => console.log('Logged in:', user.name),
-  onLogout: () => console.log('Logged out'),
-};
+const credential = createJWTCredential({ storage: 'localStorage' });
 
-// ─── Login Page ──────────────────────────────────────────────
+const passwordMethod = createPasswordMethod({
+  loginUrl: '/api/auth/login',
+  label: 'Username & Password',
+  slot: 'primary',
+});
 
-function LoginPage() {
-  const {
-    login: passwordLogin,
-    isLoading: isPasswordLoading,
-    error: passwordError,
-  } = useLogin('password');
-  const { login: googleLogin } = useLogin('oauth-google');
-  const { login: githubLogin } = useLogin('oauth-github');
+const mockMethod = createMockMethod({
+  user: { id: 'mock-1', name: 'Demo User', email: 'demo@example.com', roles: ['user'] },
+  delay: 800,
+  label: 'Mock Login (dev)',
+  slot: 'primary',
+});
 
+const METHODS = [passwordMethod, mockMethod];
+
+async function fetchSession(token: { accessToken: string | null }) {
+  if (!token.accessToken) return null;
+  const res = await fetch('/api/auth/me', {
+    headers: { Authorization: `Bearer ${token.accessToken}` },
+  });
+  if (!res.ok) return null;
+  return res.json() as Promise<{ id: string; name: string; email: string; roles?: string[] }>;
+}
+
+// ─── Login Page ────────────────────────────────────────────────
+
+function PasswordLoginForm() {
+  const handle = useLoginMethod<typeof passwordMethod>('swr-login/password') as
+    | PasswordHandle
+    | undefined;
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
-  const handlePasswordLogin = async (e: React.FormEvent) => {
+  if (!handle) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await passwordLogin({ username, password });
-    } catch (err) {
-      console.error('Login failed:', err);
+      await handle.submit({ username, password });
+    } catch {
+      // error is available at handle.error
     }
   };
 
   return (
+    <form onSubmit={handleSubmit}>
+      <div style={{ marginBottom: 12 }}>
+        <input
+          type="text"
+          placeholder="Username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          style={{ width: '100%', padding: 8, boxSizing: 'border-box' }}
+          required
+        />
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          style={{ width: '100%', padding: 8, boxSizing: 'border-box' }}
+          required
+        />
+      </div>
+
+      {handle.error && <p style={{ color: 'red', marginBottom: 8 }}>{handle.error.message}</p>}
+
+      <button
+        type="submit"
+        disabled={handle.state === 'pending'}
+        style={{ width: '100%', padding: 10 }}
+      >
+        {handle.state === 'pending' ? 'Signing in...' : 'Sign in with Password'}
+      </button>
+    </form>
+  );
+}
+
+function MockLoginButton() {
+  const handle = useLoginMethod<typeof mockMethod>('local/mock');
+  if (!handle) return null;
+
+  return (
+    <button
+      type="button"
+      onClick={() => handle.submit?.({})}
+      disabled={handle.state === 'pending'}
+      style={{
+        width: '100%',
+        padding: 10,
+        marginTop: 8,
+        background: '#6366f1',
+        color: '#fff',
+        border: 'none',
+        borderRadius: 6,
+        cursor: 'pointer',
+      }}
+    >
+      {handle.state === 'pending' ? 'Loading...' : '✨ Mock Login (dev only)'}
+    </button>
+  );
+}
+
+function LoginPage() {
+  return (
     <div style={{ maxWidth: 400, margin: '80px auto', fontFamily: 'system-ui' }}>
-      <h1>🔐 swr-login Demo</h1>
-
-      <form onSubmit={handlePasswordLogin}>
-        <div style={{ marginBottom: 12 }}>
-          <input
-            type="text"
-            placeholder="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            style={{ width: '100%', padding: 8, boxSizing: 'border-box' }}
-          />
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={{ width: '100%', padding: 8, boxSizing: 'border-box' }}
-          />
-        </div>
-        <button type="submit" disabled={isPasswordLoading} style={{ width: '100%', padding: 10 }}>
-          {isPasswordLoading ? 'Signing in...' : 'Sign in with Password'}
-        </button>
-      </form>
-
-      {passwordError && <p style={{ color: 'red', marginTop: 8 }}>{passwordError.message}</p>}
-
-      <hr style={{ margin: '20px 0' }} />
-
-      <button
-        type="button"
-        onClick={() => googleLogin({})}
-        style={{ width: '100%', padding: 10, marginBottom: 8, cursor: 'pointer' }}
-      >
-        🔵 Sign in with Google
-      </button>
-
-      <button
-        type="button"
-        onClick={() => githubLogin({})}
-        style={{ width: '100%', padding: 10, cursor: 'pointer' }}
-      >
-        ⚫ Sign in with GitHub
-      </button>
+      <h1>swr-login v0.9 Demo</h1>
+      <PasswordLoginForm />
+      <MockLoginButton />
     </div>
   );
 }
 
-// ─── Dashboard (protected) ───────────────────────────────────
+// ─── Dashboard (protected) ─────────────────────────────────────
+
+type User = { id?: string; name?: string; email?: string; roles?: string[] };
 
 function Dashboard() {
-  const { user } = useUser();
-  const { logout, isLoading } = useLogout();
-  const { accessToken, expiresAt } = useSession();
+  const { user } = useSession<User>();
+  const { logout, isPending } = useLogout();
+
+  useSessionEvent((event) => {
+    if (event.kind === 'logout') {
+      console.log('[demo] signed out');
+    }
+  });
 
   return (
     <div style={{ maxWidth: 600, margin: '40px auto', fontFamily: 'system-ui' }}>
@@ -131,13 +167,7 @@ function Dashboard() {
           <strong>Email:</strong> {user?.email ?? 'N/A'}
         </p>
         <p>
-          <strong>ID:</strong> {user?.id}
-        </p>
-        <p>
-          <strong>Token:</strong> {accessToken?.slice(0, 20)}...
-        </p>
-        <p>
-          <strong>Expires:</strong> {expiresAt ? new Date(expiresAt).toLocaleString() : 'N/A'}
+          <strong>ID:</strong> {user?.id ?? 'N/A'}
         </p>
       </div>
 
@@ -154,31 +184,39 @@ function Dashboard() {
       <button
         type="button"
         onClick={() => logout()}
-        disabled={isLoading}
+        disabled={isPending}
         style={{ marginTop: 16, padding: '10px 24px', cursor: 'pointer' }}
       >
-        {isLoading ? 'Signing out...' : 'Sign Out'}
+        {isPending ? 'Signing out...' : 'Sign Out'}
       </button>
     </div>
   );
 }
 
-// ─── App Root ────────────────────────────────────────────────
+// ─── App Root ──────────────────────────────────────────────────
 
 function AppContent() {
-  const { isAuthenticated, isLoading } = useUser();
+  const { status } = useSession();
 
-  if (isLoading) {
+  if (status === 'loading') {
     return <div style={{ textAlign: 'center', marginTop: 100 }}>Loading...</div>;
   }
 
-  return isAuthenticated ? <Dashboard /> : <LoginPage />;
+  return status === 'authenticated' ? <Dashboard /> : <LoginPage />;
 }
 
 export default function App() {
+  const methods = useMemo(() => METHODS, []);
+
   return (
-    <SWRLoginProvider config={config}>
+    <AuthHookRegistry
+      credential={credential}
+      methods={methods}
+      fetchSession={fetchSession}
+      onSessionChange={(e) => console.log('[swr-login]', e.kind, e.user)}
+      security={{ enableBroadcastSync: true }}
+    >
       <AppContent />
-    </SWRLoginProvider>
+    </AuthHookRegistry>
   );
 }

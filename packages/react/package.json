@@ -1,7 +1,7 @@
 {
   "name": "@swr-login/react",
-  "version": "0.13.0",
-  "description": "React bindings for swr-login: Provider, Hooks, and AuthGuard component",
+  "version": "0.14.0",
+  "description": "React bindings for swr-login v0.9: AuthHookRegistry, hooks, AuthGuard",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -27,13 +27,12 @@
     "clean": "rm -rf dist"
   },
   "peerDependencies": {
-    "react": ">=18.0.0",
-    "swr": ">=2.0.0"
+    "react": ">=18.0.0"
   },
   "dependencies": {
     "@swr-login/core": "workspace:*"
   },
-  "keywords": ["swr", "login", "auth", "react", "hook"],
+  "keywords": ["swr-login", "auth", "react", "hook", "method", "plugin-as-hook"],
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -46,6 +45,11 @@
     "access": "public"
   },
   "devDependencies": {
-    "@types/react": "^19.0.0"
+    "@types/react": "^19.0.0",
+    "@testing-library/react": "^16.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "jsdom": "^25.0.0"
   }
 }

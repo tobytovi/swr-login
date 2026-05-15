@@ -1,7 +1,7 @@
 {
-  "name": "@swr-login/plugin-passkey",
-  "version": "0.2.10",
-  "description": "WebAuthn/Passkey login plugin for swr-login (biometric & security key authentication)",
+  "name": "@swr-login/method-passkey",
+  "version": "1.0.0",
+  "description": "WebAuthn / Passkey login method for swr-login v0.9",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -23,12 +23,18 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
+    "test": "vitest run --passWithNoTests",
     "clean": "rm -rf dist"
   },
-  "dependencies": {
-    "@swr-login/core": "workspace:*"
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "swr-login": "workspace:*"
   },
-  "keywords": ["swr-login", "plugin", "passkey", "webauthn", "fido2", "biometric"],
+  "dependencies": {
+    "@swr-login/core": "workspace:*",
+    "@swr-login/react": "workspace:*"
+  },
+  "keywords": ["swr-login", "method", "passkey", "webauthn", "fido2"],
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -39,5 +45,15 @@
   "bugs": "https://github.com/tobytovi/swr-login/issues",
   "publishConfig": {
     "access": "public"
+  },
+  "swr-login": {
+    "methodVersion": "1.0",
+    "category": "passkey",
+    "methodId": "swr-login/passkey",
+    "compilerCompat": false
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "react": "^19.0.0"
   }
 }

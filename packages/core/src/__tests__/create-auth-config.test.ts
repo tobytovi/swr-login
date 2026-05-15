@@ -1,273 +1,70 @@
 import { describe, expect, it } from 'vitest';
 import { createAuthConfig } from '../create-auth-config';
-import type { SWRLoginConfig, SWRLoginPlugin, TokenAdapter } from '../types';
+import type { AuthHookRegistryProps, Credential, LoginMethod } from '../types';
 
-// 模拟 TokenAdapter
-const mockAdapter: TokenAdapter = {
+const mockCredential: Credential = {
+  version: '1.0',
+  hasAuth: () => false,
+  clear: async () => {},
   getAccessToken: () => null,
-  setAccessToken: () => {},
-  getRefreshToken: () => null,
-  setRefreshToken: () => {},
-  getExpiresAt: () => null,
-  setExpiresAt: () => {},
-  clear: () => {},
+  subscribe: () => () => {},
 };
 
-// 模拟 Plugin
-const mockPlugin: SWRLoginPlugin = {
-  name: 'mock-plugin',
-  type: 'password',
-  login: async () => ({
-    user: { id: '1' },
-    accessToken: 'token',
-    expiresAt: Date.now() + 3600000,
-  }),
+const mockMethod: LoginMethod = {
+  id: 'test/mock',
+  meta: { label: 'mock' },
+  use: () => ({ state: 'idle', reset: () => {} }),
 };
 
-describe('createAuthConfig', () => {
-  it('应返回与传入参数完全相同的配置对象', () => {
-    const config: SWRLoginConfig = {
-      adapter: mockAdapter,
-      plugins: [mockPlugin],
+type ConfigInput = Omit<AuthHookRegistryProps, 'children'>;
+
+describe('createAuthConfig (v0.9)', () => {
+  it('returns the same config object reference', () => {
+    const config: ConfigInput = {
+      credential: mockCredential,
+      methods: [mockMethod],
     };
-
     const result = createAuthConfig(config);
-    expect(result).toBe(config); // 引用相同
+    expect(result).toBe(config);
   });
 
-  it('应保留所有配置字段', () => {
-    const fetchUser = async (token: string) => ({ id: '1', name: 'Test' });
-    const onLogin = () => {};
-    const onLogout = () => {};
-    const onError = () => {};
+  it('preserves all v0.9 fields', () => {
+    const fetchSession = async () => ({ id: '1', name: 'Alice' });
+    const onSessionChange = async () => {};
 
-    const config: SWRLoginConfig = {
-      adapter: mockAdapter,
-      plugins: [mockPlugin],
-      fetchUser,
-      onLogin,
-      onLogout,
-      onError,
+    const config = createAuthConfig<ConfigInput>({
+      credential: mockCredential,
+      methods: [mockMethod],
+      fetchSession,
+      onSessionChange,
       security: {
         enableBroadcastSync: true,
         clearOnHidden: false,
+        broadcastChannel: 'custom-channel',
       },
-    };
+    });
 
-    const result = createAuthConfig(config);
-
-    expect(result.adapter).toBe(mockAdapter);
-    expect(result.plugins).toEqual([mockPlugin]);
-    expect(result.fetchUser).toBe(fetchUser);
-    expect(result.onLogin).toBe(onLogin);
-    expect(result.onLogout).toBe(onLogout);
-    expect(result.onError).toBe(onError);
-    expect(result.security).toEqual({
+    expect(config.credential).toBe(mockCredential);
+    expect(config.methods).toEqual([mockMethod]);
+    expect(config.fetchSession).toBe(fetchSession);
+    expect(config.onSessionChange).toBe(onSessionChange);
+    expect(config.security).toEqual({
       enableBroadcastSync: true,
       clearOnHidden: false,
+      broadcastChannel: 'custom-channel',
     });
   });
 
-  it('应支持最小配置（仅 adapter + plugins）', () => {
-    const config = createAuthConfig({
-      adapter: mockAdapter,
-      plugins: [],
+  it('supports minimal config (credential + methods only)', () => {
+    const config = createAuthConfig<ConfigInput>({
+      credential: mockCredential,
+      methods: [],
     });
 
-    expect(config.adapter).toBe(mockAdapter);
-    expect(config.plugins).toEqual([]);
-    expect(config.fetchUser).toBeUndefined();
-    expect(config.onLogin).toBeUndefined();
-  });
-
-  it('返回值应满足 SWRLoginConfig 类型约束', () => {
-    const config: SWRLoginConfig = createAuthConfig({
-      adapter: mockAdapter,
-      plugins: [mockPlugin],
-    });
-
-    // 类型检查：确保返回值可赋值给 SWRLoginConfig
-    expect(config).toBeDefined();
-    expect(config.adapter).toBeDefined();
-    expect(config.plugins).toBeDefined();
-  });
-
-  // ── validateUserOnLogin & onFetchUserError ──────────────────
-
-  it('未设置 validateUserOnLogin 时应为 undefined（消费方视为 true）', () => {
-    const config = createAuthConfig({
-      adapter: mockAdapter,
-      plugins: [],
-    });
-
-    expect(config.validateUserOnLogin).toBeUndefined();
-  });
-
-  it('应保留 validateUserOnLogin 为 true 的配置', () => {
-    const config = createAuthConfig({
-      adapter: mockAdapter,
-      plugins: [],
-      validateUserOnLogin: true,
-    });
-
-    expect(config.validateUserOnLogin).toBe(true);
-  });
-
-  it('应保留 validateUserOnLogin 为 false 的配置', () => {
-    const config = createAuthConfig({
-      adapter: mockAdapter,
-      plugins: [],
-      validateUserOnLogin: false,
-    });
-
-    expect(config.validateUserOnLogin).toBe(false);
-  });
-
-  it('未设置 onFetchUserError 时应为 undefined', () => {
-    const config = createAuthConfig({
-      adapter: mockAdapter,
-      plugins: [],
-    });
-
-    expect(config.onFetchUserError).toBeUndefined();
-  });
-
-  it('应保留 onFetchUserError 回调', () => {
-    const handler = (error: Error): 'retry' | 'logout' | 'ignore' => {
-      if (error.message.includes('disabled')) return 'logout';
-      return 'ignore';
-    };
-
-    const config = createAuthConfig({
-      adapter: mockAdapter,
-      plugins: [],
-      onFetchUserError: handler,
-    });
-
-    expect(config.onFetchUserError).toBe(handler);
-    // 验证回调返回值类型正确
-    expect(config.onFetchUserError?.(new Error('account disabled'))).toBe('logout');
-    expect(config.onFetchUserError?.(new Error('network timeout'))).toBe('ignore');
-  });
-
-  it('新增配置项应为可选（不传时不影响现有行为）', () => {
-    // 仅传入必选字段，不传 validateUserOnLogin 和 onFetchUserError
-    const config = createAuthConfig({
-      adapter: mockAdapter,
-      plugins: [mockPlugin],
-      fetchUser: async () => ({ id: '1' }),
-      onLogin: () => {},
-    });
-
-    expect(config.validateUserOnLogin).toBeUndefined();
-    expect(config.onFetchUserError).toBeUndefined();
-    expect(config.afterAuth).toBeUndefined();
-    // 原有字段不受影响
-    expect(config.fetchUser).toBeDefined();
-    expect(config.onLogin).toBeDefined();
-  });
-
-  // ── afterAuth ───────────────────────────────────────────────
-
-  it('未设置 afterAuth 时应为 undefined', () => {
-    const config = createAuthConfig({
-      adapter: mockAdapter,
-      plugins: [],
-    });
-
-    expect(config.afterAuth).toBeUndefined();
-  });
-
-  it('应保留 afterAuth 回调', () => {
-    const afterAuth = async () => {};
-
-    const config = createAuthConfig({
-      adapter: mockAdapter,
-      plugins: [],
-      afterAuth,
-    });
-
-    expect(config.afterAuth).toBe(afterAuth);
-  });
-
-  it('afterAuth 与 validateUserOnLogin 可同时配置', () => {
-    const afterAuth = async () => {};
-
-    const config = createAuthConfig({
-      adapter: mockAdapter,
-      plugins: [],
-      afterAuth,
-      validateUserOnLogin: true,
-      fetchUser: async () => ({ id: '1' }),
-    });
-
-    expect(config.afterAuth).toBe(afterAuth);
-    expect(config.validateUserOnLogin).toBe(true);
-    expect(config.fetchUser).toBeDefined();
-  });
-
-  // ── swrOptions ──────────────────────────────────────────────
-
-  it('未设置 swrOptions 时应为 undefined', () => {
-    const config = createAuthConfig({
-      adapter: mockAdapter,
-      plugins: [],
-    });
-
-    expect(config.swrOptions).toBeUndefined();
-  });
-
-  it('应保留 swrOptions 配置', () => {
-    const config = createAuthConfig({
-      adapter: mockAdapter,
-      plugins: [],
-      swrOptions: {
-        revalidateOnFocus: false,
-        revalidateOnReconnect: false,
-        dedupingInterval: 5000,
-        focusThrottleInterval: 10000,
-        refreshInterval: 30000,
-      },
-    });
-
-    expect(config.swrOptions).toEqual({
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-      dedupingInterval: 5000,
-      focusThrottleInterval: 10000,
-      refreshInterval: 30000,
-    });
-  });
-
-  it('swrOptions 支持部分配置', () => {
-    const config = createAuthConfig({
-      adapter: mockAdapter,
-      plugins: [],
-      swrOptions: {
-        revalidateOnFocus: false,
-      },
-    });
-
-    expect(config.swrOptions?.revalidateOnFocus).toBe(false);
-    expect(config.swrOptions?.revalidateOnReconnect).toBeUndefined();
-  });
-
-  it('swrOptions 与其他配置项可同时使用', () => {
-    const config = createAuthConfig({
-      adapter: mockAdapter,
-      plugins: [],
-      fetchUser: async () => ({ id: '1' }),
-      validateUserOnLogin: true,
-      swrOptions: {
-        revalidateOnFocus: false,
-      },
-      security: {
-        enableBroadcastSync: true,
-      },
-    });
-
-    expect(config.swrOptions?.revalidateOnFocus).toBe(false);
-    expect(config.validateUserOnLogin).toBe(true);
-    expect(config.security?.enableBroadcastSync).toBe(true);
+    expect(config.credential).toBe(mockCredential);
+    expect(config.methods).toEqual([]);
+    expect(config.fetchSession).toBeUndefined();
+    expect(config.onSessionChange).toBeUndefined();
+    expect(config.security).toBeUndefined();
   });
 });

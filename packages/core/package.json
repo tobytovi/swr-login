@@ -1,7 +1,7 @@
 {
   "name": "@swr-login/core",
-  "version": "0.12.0",
-  "description": "Core logic for swr-login: state machine, token management, plugin system, event emitter",
+  "version": "0.13.0",
+  "description": "Core primitives for swr-login v0.9: session store, event bus, method registry, credential contract",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -26,7 +26,7 @@
     "test": "vitest run",
     "clean": "rm -rf dist"
   },
-  "keywords": ["swr", "login", "auth", "react", "hook", "plugin"],
+  "keywords": ["swr", "login", "auth", "react", "hook", "method", "plugin-as-hook"],
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -37,5 +37,17 @@
   "bugs": "https://github.com/tobytovi/swr-login/issues",
   "publishConfig": {
     "access": "public"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": false
+    }
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "react": "^19.0.0"
   }
 }

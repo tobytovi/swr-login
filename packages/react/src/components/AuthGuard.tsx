@@ -1,75 +1,40 @@
-import type React from 'react';
-import { usePermission } from '../hooks/usePermission';
-import { useUser } from '../hooks/useUser';
+/**
+ * @swr-login/react - AuthGuard (v0.9).
+ *
+ * Declarative auth guard powered by `useSession`. Permission/role checks
+ * are delegated to a user-supplied predicate to keep the core unopinionated
+ * about user shape.
+ */
 
-export interface AuthGuardProps {
+import type React from 'react';
+import { useSession } from '../hooks/useSession';
+
+export interface AuthGuardProps<TUser = unknown> {
   children: React.ReactNode;
-  /** Required permissions (checked against user.permissions) */
-  permissions?: string[];
-  /** Required roles (checked against user.roles) */
-  roles?: string[];
-  /** If true, ALL permissions/roles must match. If false, ANY match suffices. (default: false) */
-  requireAll?: boolean;
-  /** Component to render when user is not authenticated or lacks permissions */
+  /** Custom authorization check; receives `user` and returns `boolean`. */
+  authorize?: (user: TUser) => boolean;
+  /** Rendered when unauthenticated or `authorize` returns false. */
   fallback?: React.ReactNode;
-  /** Component to render while checking auth status */
+  /** Rendered while the session is still loading. */
   loadingComponent?: React.ReactNode;
 }
 
-/**
- * Declarative auth guard component.
- * Protects child content based on authentication state and permissions/roles.
- *
- * @example
- * ```tsx
- * <AuthGuard
- *   permissions={['admin', 'editor']}
- *   requireAll={false}
- *   fallback={<Navigate to="/login" />}
- *   loadingComponent={<Skeleton />}
- * >
- *   <AdminPanel />
- * </AuthGuard>
- * ```
- */
-export function AuthGuard({
+export function AuthGuard<TUser = unknown>({
   children,
-  permissions,
-  roles,
-  requireAll = false,
+  authorize,
   fallback = null,
   loadingComponent = null,
-}: AuthGuardProps) {
-  const { isLoading, isAuthenticated } = useUser();
-  const { hasAllPermissions, hasAnyPermission, hasAllRoles, hasAnyRole } = usePermission();
+}: AuthGuardProps<TUser>) {
+  const { user, status } = useSession<TUser>();
 
-  if (isLoading) {
+  if (status === 'loading') {
     return <>{loadingComponent}</>;
   }
-
-  if (!isAuthenticated) {
+  if (status !== 'authenticated' || user === null) {
     return <>{fallback}</>;
   }
-
-  // Check permissions
-  if (permissions && permissions.length > 0) {
-    const hasRequiredPermissions = requireAll
-      ? hasAllPermissions(permissions)
-      : hasAnyPermission(permissions);
-
-    if (!hasRequiredPermissions) {
-      return <>{fallback}</>;
-    }
+  if (authorize && !authorize(user)) {
+    return <>{fallback}</>;
   }
-
-  // Check roles
-  if (roles && roles.length > 0) {
-    const hasRequiredRoles = requireAll ? hasAllRoles(roles) : hasAnyRole(roles);
-
-    if (!hasRequiredRoles) {
-      return <>{fallback}</>;
-    }
-  }
-
   return <>{children}</>;
 }

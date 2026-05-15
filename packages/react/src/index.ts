@@ -1,41 +1,47 @@
+/**
+ * @swr-login/react v0.9 - Public API.
+ *
+ * Plugin-as-Hook React bindings. Pairs with `@swr-login/core` v0.9.
+ */
+
 // ─── Provider ─────────────────────────────────────────────────
-export { SWRLoginProvider } from './provider';
-export type { SWRLoginProviderProps } from './provider';
+export { AuthHookRegistry, SWRLoginProvider } from './provider';
 
 // ─── Hooks ────────────────────────────────────────────────────
-export { useLogin } from './hooks/useLogin';
-export type { UseLoginReturn, UseLoginOptions } from './hooks/useLogin';
+export { useSession } from './hooks/useSession';
+export type { UseSessionReturn } from './hooks/useSession';
 
-export { useMultiStepLogin } from './hooks/useMultiStepLogin';
-export type { UseMultiStepLoginReturn } from './hooks/useMultiStepLogin';
+export { useCredential } from './hooks/useCredential';
+export { useAuthInternal } from './hooks/useAuthInternal';
 
-export { useAuthInjector } from './hooks/useAuthInjector';
+export { useLoginMethods } from './hooks/useLoginMethods';
+export type { UseLoginMethodsFilter } from './hooks/useLoginMethods';
 
-export { useUser, AUTH_KEY } from './hooks/useUser';
-export type { UseUserReturn } from './hooks/useUser';
+export { useLoginMethod } from './hooks/useLoginMethod';
 
-export {
-  useUserChange,
-  useUserChangeEffect,
-  useUserChangeOn,
-} from './hooks/useUserChange';
+export { useSessionEvent } from './hooks/useSessionEvent';
+export type { SessionEventHandler } from './hooks/useSessionEvent';
 
 export { useLogout } from './hooks/useLogout';
-export type { UseLogoutReturn, UseLogoutOptions } from './hooks/useLogout';
-
-export { useAdapter } from './hooks/useAdapter';
-export type { UseAdapterReturn } from './hooks/useAdapter';
-
-export { useSession } from './hooks/useSession';
-export type { SessionInfo } from './hooks/useSession';
-
-export { usePermission } from './hooks/usePermission';
-export type { UsePermissionReturn } from './hooks/usePermission';
+export type { UseLogoutReturn } from './hooks/useLogout';
 
 // ─── Components ───────────────────────────────────────────────
 export { AuthGuard } from './components/AuthGuard';
 export type { AuthGuardProps } from './components/AuthGuard';
 
-// ─── Context (advanced usage) ─────────────────────────────────
-export { useAuthContext } from './context';
-export type { AuthContextValue } from './context';
+export { Slot } from './components/Slot';
+export type { SlotProps } from './components/Slot';
+
+// ─── Re-export core types for convenience ─────────────────────
+export type {
+  AuthEvent,
+  AuthEventKind,
+  AuthHookRegistryProps,
+  AuthInternalContext,
+  BaseLoginMethodHandle,
+  Credential,
+  LoginMethod,
+  LoginMethodMeta,
+  SecurityConfig,
+  SessionChangeEvent,
+} from '@swr-login/core';

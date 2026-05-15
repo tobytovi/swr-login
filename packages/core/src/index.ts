@@ -1,58 +1,63 @@
+/**
+ * @swr-login/core v0.9 - Plugin-as-Hook public API.
+ *
+ * Layer-1 primitives consumed by `@swr-login/react` and method packages.
+ */
+
 // ─── Types ────────────────────────────────────────────────────
 export type {
-  AuthState,
-  AuthStateChange,
-  User,
-  AuthResponse,
-  PluginType,
-  PluginContext,
-  LoginCallOptions,
-  SWRLoginPlugin,
-  LoginStep,
-  MultiStepLoginPlugin,
-  AfterAuthContext,
-  AuthInjector,
-  CacheAdapter,
-  TokenAdapter,
-  SWRLoginConfig,
+  // Method
+  LoginMethod,
+  LoginMethodMeta,
+  BaseLoginMethodHandle,
+  // Credential
+  Credential,
+  // Internal context
+  AuthInternalContext,
+  // Events
+  AuthEvent,
+  AuthEventKind,
+  SessionChangeEvent,
+  // Session store
+  SessionStatus,
+  SessionSnapshot,
+  // Registry props
+  AuthHookRegistryProps,
   SecurityConfig,
-  SWROptions,
-  UserChangeSource,
+  // Migration aliases
   UserChangeEvent,
-  AuthEventType,
-  AuthEventMap,
-  BroadcastMessageType,
-  BroadcastMessage,
-  LoginErrorPhase,
-  TranslateLoginErrorContext,
-  TranslateLoginErrorFn,
+  UserChangeSource,
 } from './types';
-export { isMultiStepPlugin } from './types';
 
 // ─── Errors ───────────────────────────────────────────────────
 export {
   AuthError,
   NetworkError,
-  TokenExpiredError,
-  TokenRefreshError,
-  PluginNotFoundError,
-  PluginInitError,
-  PluginTypeMismatchError,
   InvalidCredentialsError,
   CSRFError,
   OAuthPopupError,
-  StepExecutionError,
-  StepOutOfRangeError,
+  MethodNotFoundError,
+  DuplicateMethodIdError,
   LoginRejection,
 } from './errors';
 
 // ─── Core Classes ─────────────────────────────────────────────
-export { AuthEventEmitter } from './event-emitter';
-export { AuthStateMachine } from './state-machine';
-export { TokenManager } from './token-manager';
-export type { RefreshFunction } from './token-manager';
-export { PluginManager } from './plugin-manager';
+export { EventBus } from './event-bus';
+export { SessionStore } from './session-store';
+export type { FetchSessionFn, SessionStoreOptions } from './session-store';
+export {
+  MethodRegistry,
+  buildMethodRegistry,
+  validateMethodId,
+  checkIdSetStability,
+  slotMatches,
+  isMethodEnabled,
+} from './method-registry';
 export { BroadcastSync } from './broadcast-sync';
+export type { BroadcastListener } from './broadcast-sync';
+
+// ─── Method Authoring ─────────────────────────────────────────
+export { defineLoginMethod, defineLazyLoginMethod } from './define-method';
 
 // ─── Security Utilities ───────────────────────────────────────
 export { generatePKCE, storePKCEVerifier, retrievePKCEVerifier } from './security/pkce';
@@ -70,4 +75,5 @@ export {
   isTokenExpired,
   generateTabId,
   safeJsonParse,
+  noop,
 } from './utils';

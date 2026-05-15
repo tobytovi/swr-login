@@ -1,7 +1,7 @@
 {
   "name": "swr-login",
-  "version": "0.7.1",
-  "description": "The best React Hook for auth state management. Works with any backend.",
+  "version": "0.9.0",
+  "description": "Plugin-as-Hook React auth state management. Works with any backend.",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -15,16 +15,6 @@
       "require": {
         "types": "./dist/index.d.cts",
         "default": "./dist/index.cjs"
-      }
-    },
-    "./presets": {
-      "import": {
-        "types": "./dist/presets.d.ts",
-        "default": "./dist/presets.js"
-      },
-      "require": {
-        "types": "./dist/presets.d.cts",
-        "default": "./dist/presets.cjs"
       }
     },
     "./adapters/jwt": {
@@ -57,54 +47,64 @@
         "default": "./dist/adapters/session.cjs"
       }
     },
-    "./plugins/password": {
+    "./methods/password": {
       "import": {
-        "types": "./dist/plugins/password.d.ts",
-        "default": "./dist/plugins/password.js"
+        "types": "./dist/methods/password.d.ts",
+        "default": "./dist/methods/password.js"
       },
       "require": {
-        "types": "./dist/plugins/password.d.cts",
-        "default": "./dist/plugins/password.cjs"
+        "types": "./dist/methods/password.d.cts",
+        "default": "./dist/methods/password.cjs"
       }
     },
-    "./plugins/oauth-github": {
+    "./methods/mock": {
       "import": {
-        "types": "./dist/plugins/oauth-github.d.ts",
-        "default": "./dist/plugins/oauth-github.js"
+        "types": "./dist/methods/mock.d.ts",
+        "default": "./dist/methods/mock.js"
       },
       "require": {
-        "types": "./dist/plugins/oauth-github.d.cts",
-        "default": "./dist/plugins/oauth-github.cjs"
+        "types": "./dist/methods/mock.d.cts",
+        "default": "./dist/methods/mock.cjs"
       }
     },
-    "./plugins/oauth-google": {
+    "./methods/oauth-github": {
       "import": {
-        "types": "./dist/plugins/oauth-google.d.ts",
-        "default": "./dist/plugins/oauth-google.js"
+        "types": "./dist/methods/oauth-github.d.ts",
+        "default": "./dist/methods/oauth-github.js"
       },
       "require": {
-        "types": "./dist/plugins/oauth-google.d.cts",
-        "default": "./dist/plugins/oauth-google.cjs"
+        "types": "./dist/methods/oauth-github.d.cts",
+        "default": "./dist/methods/oauth-github.cjs"
       }
     },
-    "./plugins/oauth-wechat": {
+    "./methods/oauth-google": {
       "import": {
-        "types": "./dist/plugins/oauth-wechat.d.ts",
-        "default": "./dist/plugins/oauth-wechat.js"
+        "types": "./dist/methods/oauth-google.d.ts",
+        "default": "./dist/methods/oauth-google.js"
       },
       "require": {
-        "types": "./dist/plugins/oauth-wechat.d.cts",
-        "default": "./dist/plugins/oauth-wechat.cjs"
+        "types": "./dist/methods/oauth-google.d.cts",
+        "default": "./dist/methods/oauth-google.cjs"
       }
     },
-    "./plugins/passkey": {
+    "./methods/oauth-wechat": {
       "import": {
-        "types": "./dist/plugins/passkey.d.ts",
-        "default": "./dist/plugins/passkey.js"
+        "types": "./dist/methods/oauth-wechat.d.ts",
+        "default": "./dist/methods/oauth-wechat.js"
       },
       "require": {
-        "types": "./dist/plugins/passkey.d.cts",
-        "default": "./dist/plugins/passkey.cjs"
+        "types": "./dist/methods/oauth-wechat.d.cts",
+        "default": "./dist/methods/oauth-wechat.cjs"
+      }
+    },
+    "./methods/passkey": {
+      "import": {
+        "types": "./dist/methods/passkey.d.ts",
+        "default": "./dist/methods/passkey.js"
+      },
+      "require": {
+        "types": "./dist/methods/passkey.d.cts",
+        "default": "./dist/methods/passkey.cjs"
       }
     }
   },
@@ -113,7 +113,7 @@
   "scripts": {
     "build": "tsup && cp ../../README.md ./README.md",
     "dev": "tsup --watch",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "clean": "rm -rf dist"
   },
   "dependencies": {
@@ -124,23 +124,23 @@
     "@swr-login/adapter-jwt": "workspace:*",
     "@swr-login/adapter-cookie": "workspace:*",
     "@swr-login/adapter-session": "workspace:*",
-    "@swr-login/plugin-password": "workspace:*",
-    "@swr-login/plugin-oauth-github": "workspace:*",
-    "@swr-login/plugin-oauth-google": "workspace:*",
-    "@swr-login/plugin-oauth-wechat": "workspace:*",
-    "@swr-login/plugin-passkey": "workspace:*"
+    "@swr-login/method-password": "workspace:*",
+    "@swr-login/method-mock": "workspace:*",
+    "@swr-login/method-oauth-github": "workspace:*",
+    "@swr-login/method-oauth-google": "workspace:*",
+    "@swr-login/method-oauth-wechat": "workspace:*",
+    "@swr-login/method-passkey": "workspace:*"
   },
   "peerDependencies": {
-    "react": ">=18.0.0",
-    "swr": ">=2.0.0"
+    "react": ">=18.0.0"
   },
   "keywords": [
-    "swr",
     "login",
     "auth",
     "authentication",
     "react",
     "hook",
+    "plugin-as-hook",
     "jwt",
     "oauth",
     "passkey",
@@ -152,7 +152,7 @@
     "url": "https://github.com/tobytovi/swr-login",
     "directory": "packages/swr-login"
   },
-  "homepage": "https://github.com/tobytovi/swr-login#readme",
+  "homepage": "https://swr-login.dev",
   "bugs": "https://github.com/tobytovi/swr-login/issues",
   "publishConfig": {
     "access": "public"

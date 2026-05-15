@@ -1,95 +1,91 @@
-import type { BroadcastMessage, BroadcastMessageType } from './types';
+/**
+ * @swr-login/core - Cross-tab broadcast sync (v0.9).
+ *
+ * Echoes `AuthEvent`s across tabs via BroadcastChannel (or localStorage
+ * fallback). Each tab tags messages with its own tabId to suppress echo.
+ *
+ * Channel name is configurable via `SecurityConfig.broadcastChannel`.
+ */
+
+import type { AuthEvent } from './types';
 import { generateTabId, safeJsonParse } from './utils';
 
-const CHANNEL_NAME = 'swr-login-sync';
-const LS_KEY = '__swr_login_broadcast__';
+const DEFAULT_CHANNEL_NAME = 'swr-login';
+const LS_KEY_PREFIX = '__swr_login_broadcast__';
 
-type MessageHandler = (message: BroadcastMessage) => void;
+interface Envelope {
+  tabId: string;
+  event: AuthEvent;
+}
 
-/**
- * Cross-tab synchronization via BroadcastChannel API.
- * Falls back to localStorage storage events when BroadcastChannel is unavailable.
- *
- * Used to sync login/logout/token-refresh events across browser tabs.
- */
+export type BroadcastListener = (event: AuthEvent) => void;
+
 export class BroadcastSync {
-  private tabId: string;
+  private readonly channelName: string;
+  private readonly tabId: string;
   private channel: BroadcastChannel | null = null;
-  private handlers = new Set<MessageHandler>();
+  private listeners = new Set<BroadcastListener>();
   private storageHandler: ((event: StorageEvent) => void) | null = null;
   private useFallback: boolean;
+  private lsKey: string;
 
-  constructor() {
+  constructor(channelName: string = DEFAULT_CHANNEL_NAME) {
+    this.channelName = channelName;
     this.tabId = generateTabId();
     this.useFallback = typeof BroadcastChannel === 'undefined';
-    this._init();
+    this.lsKey = `${LS_KEY_PREFIX}${channelName}`;
+    this.init();
   }
 
-  private _init(): void {
+  private init(): void {
     if (!this.useFallback) {
-      this.channel = new BroadcastChannel(CHANNEL_NAME);
-      this.channel.onmessage = (event: MessageEvent) => {
-        const message = event.data as BroadcastMessage;
-        // Ignore messages from this tab
-        if (message.tabId === this.tabId) return;
-        this._notify(message);
+      this.channel = new BroadcastChannel(this.channelName);
+      this.channel.onmessage = (e: MessageEvent) => {
+        const env = e.data as Envelope;
+        if (!env || env.tabId === this.tabId) return;
+        this.notify(env.event);
       };
     } else if (typeof window !== 'undefined') {
-      // Fallback: localStorage storage event
-      this.storageHandler = (event: StorageEvent) => {
-        if (event.key !== LS_KEY || !event.newValue) return;
-        const message = safeJsonParse<BroadcastMessage>(event.newValue);
-        if (message && message.tabId !== this.tabId) {
-          this._notify(message);
+      this.storageHandler = (e: StorageEvent) => {
+        if (e.key !== this.lsKey || !e.newValue) return;
+        const env = safeJsonParse<Envelope>(e.newValue);
+        if (env && env.tabId !== this.tabId) {
+          this.notify(env.event);
         }
       };
       window.addEventListener('storage', this.storageHandler);
     }
   }
 
-  private _notify(message: BroadcastMessage): void {
-    for (const handler of this.handlers) {
+  private notify(event: AuthEvent): void {
+    for (const fn of Array.from(this.listeners)) {
       try {
-        handler(message);
+        fn(event);
       } catch (err) {
-        console.error('[swr-login] Error in broadcast handler:', err);
+        console.error('[swr-login] error in broadcast listener:', err);
       }
     }
   }
 
-  /**
-   * Send a broadcast message to all other tabs.
-   */
-  send(type: BroadcastMessageType, payload?: unknown): void {
-    const message: BroadcastMessage = {
-      type,
-      payload,
-      timestamp: Date.now(),
-      tabId: this.tabId,
-    };
-
+  /** Publish an event to all other tabs. Self-tab is skipped automatically. */
+  send(event: AuthEvent): void {
+    const envelope: Envelope = { tabId: this.tabId, event };
     if (this.channel) {
-      this.channel.postMessage(message);
+      this.channel.postMessage(envelope);
     } else if (typeof localStorage !== 'undefined') {
-      // Fallback: write to localStorage to trigger storage event in other tabs
-      localStorage.setItem(LS_KEY, JSON.stringify(message));
-      // Clean up immediately (we only need the event trigger)
-      localStorage.removeItem(LS_KEY);
+      localStorage.setItem(this.lsKey, JSON.stringify(envelope));
+      localStorage.removeItem(this.lsKey);
     }
   }
 
-  /**
-   * Subscribe to broadcast messages from other tabs.
-   * @returns Unsubscribe function
-   */
-  onMessage(handler: MessageHandler): () => void {
-    this.handlers.add(handler);
+  /** Subscribe; returns unsubscribe. */
+  subscribe(listener: BroadcastListener): () => void {
+    this.listeners.add(listener);
     return () => {
-      this.handlers.delete(handler);
+      this.listeners.delete(listener);
     };
   }
 
-  /** Destroy the broadcast channel and clean up listeners */
   destroy(): void {
     if (this.channel) {
       this.channel.close();
@@ -99,6 +95,6 @@ export class BroadcastSync {
       window.removeEventListener('storage', this.storageHandler);
       this.storageHandler = null;
     }
-    this.handlers.clear();
+    this.listeners.clear();
   }
 }

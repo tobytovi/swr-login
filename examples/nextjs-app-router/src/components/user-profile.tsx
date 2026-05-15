@@ -1,11 +1,11 @@
 'use client';
 
-import { AuthGuard, useLogout, useSession, useUser } from '@swr-login/react';
+import type { User } from '@/lib/auth-config';
+import { AuthGuard, useLogout, useSession } from 'swr-login';
 
 export function UserProfile() {
-  const { user } = useUser();
-  const { logout, isLoading: isLogoutLoading } = useLogout();
-  const { accessToken, expiresAt } = useSession();
+  const { user } = useSession<User>();
+  const { logout, isPending: isLogoutPending } = useLogout();
 
   return (
     <div className="space-y-6">
@@ -39,18 +39,6 @@ export function UserProfile() {
               )) ?? <span className="text-gray-400 text-xs">None</span>}
             </div>
           </div>
-          <div className="bg-gray-50 rounded-lg p-3">
-            <span className="text-gray-500 block mb-1">Token</span>
-            <span className="font-mono text-gray-900 text-xs break-all">
-              {accessToken ? `${accessToken.slice(0, 24)}...` : 'N/A'}
-            </span>
-          </div>
-          <div className="bg-gray-50 rounded-lg p-3">
-            <span className="text-gray-500 block mb-1">Expires</span>
-            <span className="text-gray-900 text-xs">
-              {expiresAt ? new Date(expiresAt).toLocaleString() : 'N/A'}
-            </span>
-          </div>
         </div>
       </div>
 
@@ -60,14 +48,13 @@ export function UserProfile() {
         fallback={
           <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center">
             <p className="text-gray-500 text-sm">
-              🔒 Admin panel requires the <code className="text-gray-700 font-mono">admin</code>{' '}
-              role.
+              Admin panel requires the <code className="text-gray-700 font-mono">admin</code> role.
             </p>
           </div>
         }
       >
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
-          <h3 className="text-lg font-semibold text-amber-900 mb-2">⚡ Admin Panel</h3>
+          <h3 className="text-lg font-semibold text-amber-900 mb-2">Admin Panel</h3>
           <p className="text-amber-700 text-sm">
             You have admin access. Here you can manage users, view analytics, and configure system
             settings.
@@ -79,10 +66,10 @@ export function UserProfile() {
       <button
         type="button"
         onClick={() => logout()}
-        disabled={isLogoutLoading}
+        disabled={isLogoutPending}
         className="w-full py-2.5 px-4 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white rounded-lg font-medium transition"
       >
-        {isLogoutLoading ? 'Signing out...' : 'Sign Out'}
+        {isLogoutPending ? 'Signing out...' : 'Sign Out'}
       </button>
     </div>
   );

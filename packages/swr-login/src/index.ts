@@ -1,45 +1,45 @@
-// ─── swr-login ────────────────────────────────────────────────
-// Unified entry package for the swr-login ecosystem.
-// Re-exports everything from @swr-login/core and @swr-login/react.
-//
-// Adapters and plugins are available via sub-path imports:
-//   import { JWTAdapter } from 'swr-login/adapters/jwt'
-//   import { PasswordPlugin } from 'swr-login/plugins/password'
-// ──────────────────────────────────────────────────────────────
+/**
+ * swr-login v0.9 — Unified entry package.
+ *
+ * Re-exports `@swr-login/core` and `@swr-login/react` public APIs.
+ *
+ * Method and adapter packages are available via sub-path imports:
+ *   import { passwordMethod } from 'swr-login/methods/password'
+ *   import { jwtCredential }  from 'swr-login/adapters/jwt'
+ */
 
-// ─── Core (types, errors, classes, utilities) ─────────────────
+// ─── Core ─────────────────────────────────────────────────────
 export {
   // Errors
+  LoginRejection,
   AuthError,
   NetworkError,
-  TokenExpiredError,
-  TokenRefreshError,
-  PluginNotFoundError,
-  PluginInitError,
-  PluginTypeMismatchError,
   InvalidCredentialsError,
   CSRFError,
   OAuthPopupError,
-  StepExecutionError,
-  StepOutOfRangeError,
-  LoginRejection,
-  // Core Classes
-  AuthEventEmitter,
-  AuthStateMachine,
-  TokenManager,
-  PluginManager,
+  MethodNotFoundError,
+  DuplicateMethodIdError,
+  // Core classes
+  EventBus,
+  SessionStore,
+  MethodRegistry,
   BroadcastSync,
-  // Config Helpers
-  createAuthConfig,
-  // Security Utilities
+  // Method authoring helpers
+  defineLoginMethod,
+  defineLazyLoginMethod,
+  // Registry utilities
+  buildMethodRegistry,
+  validateMethodId,
+  checkIdSetStability,
+  slotMatches,
+  isMethodEnabled,
+  // Security utilities
   generatePKCE,
   storePKCEVerifier,
   retrievePKCEVerifier,
   generateCSRFState,
   validateCSRFState,
   clearCSRFStates,
-  // Multi-step
-  isMultiStepPlugin,
   // Utilities
   generateRandomString,
   base64urlEncode,
@@ -47,91 +47,66 @@ export {
   isTokenExpired,
   generateTabId,
   safeJsonParse,
+  noop,
+  // Config helpers
+  createAuthConfig,
 } from '@swr-login/core';
 
 export type {
-  AuthState,
-  AuthStateChange,
-  User,
-  AuthResponse,
-  PluginType,
-  PluginContext,
-  LoginCallOptions,
-  SWRLoginPlugin,
-  CacheAdapter,
-  TokenAdapter,
-  SWRLoginConfig,
+  // Method contract
+  LoginMethod,
+  LoginMethodMeta,
+  BaseLoginMethodHandle,
+  // Credential
+  Credential,
+  // Internal context
+  AuthInternalContext,
+  // Events
+  AuthEvent,
+  AuthEventKind,
+  SessionChangeEvent,
+  // Session store
+  SessionStatus,
+  SessionSnapshot,
+  // Registry props
+  AuthHookRegistryProps,
   SecurityConfig,
-  AuthEventType,
-  AuthEventMap,
-  BroadcastMessageType,
-  BroadcastMessage,
-  RefreshFunction,
+  // Session store options
+  FetchSessionFn,
+  SessionStoreOptions,
+  // PKCE
   PKCECodePair,
-  // Multi-step types
-  LoginStep,
-  MultiStepLoginPlugin,
-  AuthInjector,
-  // User change types
-  UserChangeSource,
+  // Broadcast
+  BroadcastListener,
+  // Migration aliases
   UserChangeEvent,
-  // Config types
-  SWROptions,
-  AfterAuthContext,
-  // Login error translation
-  LoginErrorPhase,
-  TranslateLoginErrorContext,
-  TranslateLoginErrorFn,
+  UserChangeSource,
 } from '@swr-login/core';
 
-// ─── React (Provider, Hooks, Components) ──────────────────────
+// ─── React ────────────────────────────────────────────────────
 export {
   // Provider
+  AuthHookRegistry,
+  /** @deprecated Use AuthHookRegistry. */
   SWRLoginProvider,
   // Hooks
-  useLogin,
-  useMultiStepLogin,
-  useAuthInjector,
-  useUser,
-  useUserChange,
-  useUserChangeEffect,
-  useUserChangeOn,
-  useAdapter,
-  AUTH_KEY,
-  useLogout,
   useSession,
-  usePermission,
+  useCredential,
+  useAuthInternal,
+  useLoginMethods,
+  useLoginMethod,
+  useSessionEvent,
+  useLogout,
   // Components
   AuthGuard,
-  // Context (advanced)
-  useAuthContext,
+  Slot,
 } from '@swr-login/react';
 
 export type {
-  SWRLoginProviderProps,
-  UseLoginReturn,
-  UseLoginOptions,
-  UseMultiStepLoginReturn,
-  UseUserReturn,
+  UseSessionReturn,
+  UseLoginMethodsFilter,
+  SessionEventHandler,
   UseLogoutReturn,
-  UseLogoutOptions,
-  SessionInfo,
-  UsePermissionReturn,
   AuthGuardProps,
-  AuthContextValue,
-  UseAdapterReturn,
+  SlotProps,
 } from '@swr-login/react';
-
-// ─── Presets ──────────────────────────────────────────────────
-export { presets } from './presets';
-
-export type {
-  BasePresetOptions,
-  PasswordPresetOptions,
-  SocialPresetOptions,
-  SocialProviders,
-  PasskeyPresetOptions,
-  FullPresetOptions,
-  FullPasswordConfig,
-  FullPasskeyConfig,
-} from './presets';

@@ -1,213 +1,309 @@
-import {
-  AuthEventEmitter,
-  AuthStateMachine,
-  BroadcastSync,
-  PluginManager,
-  type SWRLoginConfig,
-  TokenManager,
-} from '@swr-login/core';
-import type React from 'react';
-import { useEffect, useMemo, useRef } from 'react';
-import {
-  AuthContext,
-  type AuthContextValue,
-  type LastLoginContextRef,
-  type UserChangeHint,
-} from './context';
+/**
+ * @swr-login/react - AuthHookRegistry (v0.9).
+ *
+ * Replaces v0.7's `<SWRLoginProvider>`. Responsibilities:
+ *   1. Build `MethodRegistry` from `methods` prop (with id-stability check).
+ *   2. Construct the singletons: `SessionStore`, `EventBus`, `BroadcastSync`.
+ *   3. Wire `Credential.subscribe` and broadcast events to refresh the session.
+ *   4. Schedule `LoginMethod.onRegistryMount` (serial await, errors caught).
+ *   5. Render `<MethodSlotList>` so `method.use()` is invoked for every method
+ *      every render (stable Hook order).
+ *   6. Bridge `onSessionChange` callback by diffing user transitions.
+ */
 
-export interface SWRLoginProviderProps {
-  /** Authentication configuration */
-  config: SWRLoginConfig;
-  children: React.ReactNode;
-}
+import {
+  type AuthEvent,
+  type AuthHookRegistryProps,
+  type AuthInternalContext,
+  BroadcastSync,
+  EventBus,
+  type LoginMethod,
+  type SessionSnapshot,
+  SessionStore,
+  buildMethodRegistry,
+  checkIdSetStability,
+} from '@swr-login/core';
+import { useEffect, useMemo, useRef } from 'react';
+import { MethodSlotList } from './components/MethodSlotList';
+import {
+  AuthInternalContextCtx,
+  AuthRegistryContext,
+  type AuthRegistryContextValue,
+  type MethodCallDepthRef,
+} from './context';
+import { handlesChangeBus } from './hooks/useLoginMethod';
+
+const isDev = (() => {
+  const proc = (globalThis as { process?: { env?: { NODE_ENV?: string } } }).process;
+  return typeof proc !== 'undefined' && proc.env?.NODE_ENV !== 'production';
+})();
 
 /**
- * SWRLoginProvider initializes the auth system and provides context to all child hooks.
+ * Top-level Provider for swr-login v0.9.
  *
  * @example
  * ```tsx
- * import { SWRLoginProvider } from '@swr-login/react';
- * import { JWTAdapter } from '@swr-login/adapter-jwt';
- * import { PasswordPlugin } from '@swr-login/plugin-password';
- *
- * function App() {
- *   return (
- *     <SWRLoginProvider
- *       config={{
- *         adapter: JWTAdapter(),
- *         plugins: [PasswordPlugin({ loginUrl: '/api/login' })],
- *       }}
- *     >
- *       <YourApp />
- *     </SWRLoginProvider>
- *   );
- * }
+ * <AuthHookRegistry
+ *   credential={cookieCredential}
+ *   methods={[passwordMethod, githubMethod]}
+ *   fetchSession={fetchUser}
+ *   onSessionChange={async (e) => analytics.track(e)}
+ *   security={{ enableBroadcastSync: true }}
+ * >
+ *   <App />
+ * </AuthHookRegistry>
  * ```
  */
-export function SWRLoginProvider({ config, children }: SWRLoginProviderProps) {
-  const initializedRef = useRef(false);
+export function AuthHookRegistry({
+  credential,
+  methods,
+  fetchSession,
+  onSessionChange,
+  security,
+  children,
+}: AuthHookRegistryProps) {
+  // ─── Stable singletons ──────────────────────────────────
+  const eventBus = useMemo(() => new EventBus(), []);
 
-  const contextValue = useMemo<AuthContextValue>(() => {
-    const emitter = new AuthEventEmitter();
-    const stateMachine = new AuthStateMachine(emitter);
-    const tokenManager = new TokenManager(config.adapter, emitter, stateMachine);
-    const pluginManager = new PluginManager(tokenManager, emitter);
+  const sessionStore = useMemo(
+    () =>
+      new SessionStore({
+        fetchSession,
+        getAccessToken: () => credential.getAccessToken?.() ?? null,
+      }),
+    // fetchSession / credential identity-stable expected; if they change, store is rebuilt.
+    [fetchSession, credential],
+  );
 
-    // Register plugins
-    pluginManager.register(...config.plugins);
+  const broadcast = useMemo(() => {
+    if (security?.enableBroadcastSync === false) return null;
+    if (typeof window === 'undefined') return null;
+    return new BroadcastSync(security?.broadcastChannel);
+  }, [security?.enableBroadcastSync, security?.broadcastChannel]);
 
-    // Set up broadcast sync if enabled
-    const enableSync = config.security?.enableBroadcastSync !== false;
-    const broadcastSync = enableSync && typeof window !== 'undefined' ? new BroadcastSync() : null;
+  // Refs: handles map + abort controller + depth counter
+  const handlesRef = useRef<Map<string, unknown>>(new Map());
+  const registryAbortRef = useRef<AbortController | null>(null);
+  const methodCallDepthRef = useRef<MethodCallDepthRef>({ current: 0 }).current;
 
-    // Mutable hint object shared with useUser() to label the next user-change
-    // event with its causal source (login/logout/external).
-    const userChangeHint: UserChangeHint = { source: null, timestamp: 0 };
-    const markHint = (source: UserChangeHint['source']) => {
-      userChangeHint.source = source;
-      userChangeHint.timestamp = Date.now();
-    };
+  // ─── Method registry (cheap rebuild on methods change) ──
+  const previousIdsRef = useRef<string[] | null>(null);
+  const registry = useMemo(() => {
+    const reg = buildMethodRegistry(methods);
+    if (isDev) checkIdSetStability(previousIdsRef.current, reg.ids());
+    previousIdsRef.current = reg.ids();
+    return reg;
+  }, [methods]);
 
-    // Persisted loginContext from the most recent successful login.
-    // Written by useLogin after the plugin resolves; cleared on logout.
-    const lastLoginContextRef: LastLoginContextRef = { current: undefined };
-
-    // Label user-change source based on lifecycle events. The actual
-    // 'user-change' event is emitted by useUser() once SWR produces a
-    // different value; these hints only tell us *why* it's about to change.
-    emitter.on('login', () => markHint('login'));
-    emitter.on('logout', () => {
-      markHint('logout');
-      // Clear persisted loginContext so future revalidations after logout
-      // do not leak the previous session's context.
-      lastLoginContextRef.current = undefined;
-    });
-
-    // Wire up lifecycle callbacks
-    if (config.onLogin) {
-      emitter.on('login', ({ user }) => config.onLogin?.(user));
-    }
-    if (config.onLogout) {
-      emitter.on('logout', () => config.onLogout?.());
-    }
-    if (config.onError) {
-      emitter.on('error', ({ error }) => config.onError?.(error));
-    }
-
+  // ─── AuthInternalContext exposed to method authors ──────
+  const authInternal = useMemo<AuthInternalContext>(() => {
     return {
-      pluginManager,
-      tokenManager,
-      emitter,
-      stateMachine,
-      broadcastSync,
-      config,
-      userChangeHint,
-      lastLoginContextRef,
-    };
-  }, [config]);
-
-  // Initialize plugins and broadcast sync on mount
-  useEffect(() => {
-    if (initializedRef.current) return;
-    initializedRef.current = true;
-
-    const {
-      pluginManager,
-      broadcastSync,
-      tokenManager,
-      stateMachine,
-      emitter,
-      config: cfg,
-    } = contextValue;
-
-    // Initialize all plugins
-    pluginManager.initializeAll().catch((err) => {
-      console.error('[swr-login] Plugin initialization error:', err);
-    });
-
-    // Check if user has existing token -> restore session
-    const existingToken = tokenManager.getAccessToken();
-    const expiresAt = tokenManager.getExpiresAt();
-
-    if (existingToken && !tokenManager.isExpired()) {
-      stateMachine.transition('authenticated');
-    } else if (existingToken && expiresAt === null) {
-      // expiresAt 未知（如外部登录只设置了 token 但未设置过期时间）
-      // 乐观地认为已认证，让 fetchUser / SWR revalidate 来验证
-      stateMachine.transition('authenticated');
-    } else if (existingToken && tokenManager.isExpired()) {
-      stateMachine.transition('unauthenticated');
-      emitter.emit('token-expired', undefined);
-    }
-
-    // Listen for cross-tab events
-    if (broadcastSync) {
-      const { userChangeHint } = contextValue;
-      const markExternal = () => {
-        userChangeHint.source = 'external';
-        userChangeHint.timestamp = Date.now();
-      };
-
-      const unsubscribe = broadcastSync.onMessage((message) => {
-        switch (message.type) {
-          case 'LOGOUT':
-            tokenManager.clearTokens();
-            stateMachine.transition('unauthenticated');
-            emitter.emit('logout', undefined);
-            // Emit-after-mark would be overwritten by the synchronous
-            // 'logout' handler (which sets hint='logout'); re-mark to
-            // 'external' so useUser labels this cross-tab logout correctly.
-            markExternal();
-            break;
-          case 'LOGIN':
-          case 'TOKEN_REFRESH':
-            // Cross-tab login / refresh → refresh SWR cache; label the
-            // upcoming user-change as 'external'.
-            markExternal();
-            if (cfg.cacheAdapter) {
-              cfg.cacheAdapter.revalidate();
-            }
-            break;
+      credential,
+      refreshSession: async () => {
+        await sessionStore.refresh();
+        eventBus.publish({ kind: 'session_refresh' });
+      },
+      publishEvent: (event: AuthEvent) => {
+        eventBus.publish(event);
+        if (broadcast && shouldBroadcast(event.kind)) {
+          broadcast.send({ ...event, timestamp: event.timestamp ?? Date.now() });
         }
-      });
+      },
+      get registrySignal() {
+        if (!registryAbortRef.current) {
+          registryAbortRef.current = new AbortController();
+        }
+        return registryAbortRef.current.signal;
+      },
+      createMethodAbort: () => new AbortController(),
+    };
+  }, [credential, sessionStore, eventBus, broadcast]);
 
-      return () => {
-        unsubscribe();
-        broadcastSync.destroy();
-      };
-    }
-  }, [contextValue]);
-
-  // Visibility change handler for security
+  // ─── Hook up Credential.onExpire → session_lost ─────────
   useEffect(() => {
-    const { config: cfg, tokenManager, stateMachine, emitter } = contextValue;
+    credential.onExpire = () => {
+      sessionStore.clear();
+      eventBus.publish({ kind: 'session_lost' });
+      if (broadcast) {
+        broadcast.send({ kind: 'session_lost', timestamp: Date.now() });
+      }
+    };
+    return () => {
+      credential.onExpire = undefined;
+    };
+  }, [credential, sessionStore, eventBus, broadcast]);
 
-    if (!cfg.security?.clearOnHidden || typeof document === 'undefined') return;
+  // ─── Subscribe to credential changes (cross-tab etc.) ───
+  useEffect(() => {
+    const unsubscribe = credential.subscribe(() => {
+      sessionStore.refresh().catch((err) => {
+        eventBus.publish({ kind: 'external', payload: err });
+      });
+    });
+    return unsubscribe;
+  }, [credential, sessionStore, eventBus]);
 
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  // ─── Subscribe to broadcast events from other tabs ──────
+  useEffect(() => {
+    if (!broadcast) return;
+    const unsubscribe = broadcast.subscribe((event) => {
+      // Re-publish locally so useSessionEvent subscribers fire.
+      eventBus.publish(event);
+      // For lifecycle events, refresh local session.
+      if (event.kind === 'login' || event.kind === 'session_refresh') {
+        sessionStore.refresh().catch(() => {});
+      } else if (event.kind === 'logout' || event.kind === 'session_lost') {
+        sessionStore.clear();
+      }
+    });
+    return () => {
+      unsubscribe();
+      broadcast.destroy();
+    };
+  }, [broadcast, eventBus, sessionStore]);
 
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        const delay = cfg.security?.clearOnHiddenDelay ?? 300_000;
-        timeoutId = setTimeout(() => {
-          tokenManager.clearTokens();
-          stateMachine.transition('unauthenticated');
-          emitter.emit('logout', undefined);
-        }, delay);
-      } else {
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-          timeoutId = null;
+  // ─── Schedule onRegistryMount (serial, abort-aware) ─────
+  useEffect(() => {
+    let cancelled = false;
+    const cleanups: Array<() => void> = [];
+    if (!registryAbortRef.current) {
+      registryAbortRef.current = new AbortController();
+    }
+
+    (async () => {
+      for (const method of methods) {
+        if (cancelled) return;
+        if (!method.onRegistryMount) continue;
+        try {
+          const result = await method.onRegistryMount(authInternal);
+          if (typeof result === 'function') cleanups.push(result);
+        } catch (err) {
+          eventBus.publish({ kind: 'external', methodId: method.id, payload: err });
+        }
+      }
+      // Initial session probe after onRegistryMount chain finishes.
+      if (!cancelled) {
+        sessionStore.refresh().catch(() => {});
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      registryAbortRef.current?.abort();
+      registryAbortRef.current = null;
+      // Reverse-order cleanup
+      for (let i = cleanups.length - 1; i >= 0; i--) {
+        try {
+          cleanups[i]();
+        } catch (err) {
+          console.error('[swr-login] onRegistryMount cleanup error:', err);
         }
       }
     };
+    // We intentionally rerun when `methods` reference changes; id-set stability
+    // is enforced by buildMethodRegistry above.
+  }, [methods, authInternal, eventBus, sessionStore]);
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+  // ─── Bridge onSessionChange (diff user transitions) ─────
+  useEffect(() => {
+    if (!onSessionChange) return;
+    let prev: SessionSnapshot = sessionStore.getSnapshot();
+
+    // 1) Diff session-store mutations into user transitions
+    const offStore = sessionStore.subscribe(() => {
+      const next = sessionStore.getSnapshot();
+      if (next.user !== prev.user) {
+        const kind = next.user ? 'login' : 'logout';
+        const result = onSessionChange({
+          kind,
+          user: next.user,
+          previousUser: prev.user,
+          timestamp: Date.now(),
+        });
+        if (result instanceof Promise) {
+          result.catch((err) => {
+            eventBus.publish({ kind: 'external', payload: err });
+          });
+        }
+        prev = next;
+      } else {
+        prev = next;
+      }
+    });
+
+    // 2) Forward session_lost / external as full SessionChangeEvent
+    const offBus = eventBus.subscribe(['session_lost', 'session_refresh', 'external'], (event) => {
+      const snap = sessionStore.getSnapshot();
+      const result = onSessionChange({
+        kind: event.kind,
+        user: snap.user,
+        previousUser: prev.user,
+        methodId: event.methodId,
+        timestamp: event.timestamp,
+      });
+      if (result instanceof Promise) {
+        result.catch((err) => {
+          eventBus.publish({ kind: 'external', payload: err });
+        });
+      }
+    });
+
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      if (timeoutId) clearTimeout(timeoutId);
+      offStore();
+      offBus();
     };
-  }, [contextValue]);
+  }, [onSessionChange, sessionStore, eventBus]);
 
-  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
+  // ─── clearOnHidden security option ──────────────────────
+  useEffect(() => {
+    if (!security?.clearOnHidden || typeof document === 'undefined') return;
+    const handler = () => {
+      if (document.hidden) {
+        credential.clear().catch(() => {});
+        sessionStore.clear();
+        eventBus.publish({ kind: 'logout' });
+      }
+    };
+    document.addEventListener('visibilitychange', handler);
+    return () => {
+      document.removeEventListener('visibilitychange', handler);
+    };
+  }, [security?.clearOnHidden, credential, sessionStore, eventBus]);
+
+  // ─── Build registry context value ───────────────────────
+  const registryContextValue = useMemo<AuthRegistryContextValue>(
+    () => ({
+      registry,
+      credential,
+      sessionStore,
+      eventBus,
+      security,
+      methodCallDepthRef,
+      handlesRef,
+      registryAbortRef,
+    }),
+    [registry, credential, sessionStore, eventBus, security, methodCallDepthRef],
+  );
+
+  // Render order: AuthInternalContext is INNER so MethodSlot.use() receives
+  // an existing AuthInternalContext.
+  return (
+    <AuthRegistryContext.Provider value={registryContextValue}>
+      <AuthInternalContextCtx.Provider value={authInternal}>
+        <MethodSlotList methods={methods} onHandlesChange={() => handlesChangeBus.notify()} />
+        {children}
+      </AuthInternalContextCtx.Provider>
+    </AuthRegistryContext.Provider>
+  );
 }
+
+/** @deprecated Use `AuthHookRegistry`. Kept as a transitional re-export. */
+export { AuthHookRegistry as SWRLoginProvider };
+export type AuthHookRegistryPropsAlias = AuthHookRegistryProps;
+
+function shouldBroadcast(kind: AuthEvent['kind']): boolean {
+  return kind === 'login' || kind === 'logout' || kind === 'session_refresh';
+}
+
+// re-export type for d.ts
+export type { LoginMethod };

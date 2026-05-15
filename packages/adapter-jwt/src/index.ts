@@ -1,12 +1,42 @@
-import type { TokenAdapter } from '@swr-login/core';
+/**
+ * @swr-login/adapter-jwt - JWT Credential adapter (v0.9).
+ *
+ * Implements the `Credential` v1.0 contract over a pluggable storage backend
+ * (localStorage / sessionStorage / memory).
+ *
+ * Method packages that need to **persist** tokens after a successful login
+ * cast the credential to `JWTCredential` and call `.setTokens()`.
+ */
+
+import type { Credential } from '@swr-login/core';
 
 export type JWTStorageStrategy = 'localStorage' | 'sessionStorage' | 'memory';
 
 export interface JWTAdapterOptions {
-  /** Storage strategy (default: 'localStorage') */
+  /** Storage strategy (default: `'localStorage'`). */
   storage?: JWTStorageStrategy;
-  /** Key prefix for storage entries (default: 'swr_login') */
+  /** Key prefix for storage entries (default: `'swr_login'`). */
   prefix?: string;
+}
+
+export interface TokenSet {
+  accessToken: string;
+  refreshToken?: string;
+  /** Unix epoch milliseconds at which the access token expires. */
+  expiresAt?: number;
+}
+
+/**
+ * Credential implementation produced by `JWTCredential`.
+ *
+ * Adds method-side token management on top of the core Credential contract.
+ */
+export interface JWTCredential extends Credential {
+  setTokens(tokens: TokenSet): void;
+  getRefreshToken(): string | null;
+  getExpiresAt(): number | null;
+  /** The configured storage backend (informational). */
+  readonly storage: JWTStorageStrategy;
 }
 
 const KEYS = {
@@ -16,84 +46,109 @@ const KEYS = {
 } as const;
 
 /**
- * JWT Token storage adapter.
- *
- * Supports three storage strategies:
- * - `localStorage`: Persistent across browser sessions (default)
- * - `sessionStorage`: Cleared when tab closes
- * - `memory`: Cleared on page refresh (most secure for SPAs)
+ * Create a JWT-backed Credential.
  *
  * @example
  * ```ts
- * import { JWTAdapter } from '@swr-login/adapter-jwt';
- *
- * // Default: localStorage
- * const adapter = JWTAdapter();
- *
- * // High security: memory-only
- * const secureAdapter = JWTAdapter({ storage: 'memory' });
- *
- * // Custom prefix
- * const customAdapter = JWTAdapter({ prefix: 'myapp' });
+ * import { JWTCredential } from '@swr-login/adapter-jwt';
+ * const credential = JWTCredential();
+ * <AuthHookRegistry credential={credential} methods={[...]} />
  * ```
  */
-export function JWTAdapter(options: JWTAdapterOptions = {}): TokenAdapter {
+export function JWTCredential(options: JWTAdapterOptions = {}): JWTCredential {
   const { storage = 'localStorage', prefix = 'swr_login' } = options;
-
-  const makeKey = (key: string) => `${prefix}_${key}`;
-
-  // Memory storage fallback
+  const makeKey = (k: string) => `${prefix}_${k}`;
   const memoryStore = new Map<string, string>();
+  const listeners = new Set<() => void>();
 
-  const getStorage = (): Storage | null => {
+  const getStorageBackend = (): Storage | null => {
     if (storage === 'memory') return null;
     if (typeof window === 'undefined') return null;
     return storage === 'sessionStorage' ? sessionStorage : localStorage;
   };
 
-  const get = (key: string): string | null => {
-    const fullKey = makeKey(key);
-    const store = getStorage();
-    if (store) {
-      return store.getItem(fullKey);
-    }
-    return memoryStore.get(fullKey) ?? null;
+  const get = (k: string): string | null => {
+    const fullKey = makeKey(k);
+    const store = getStorageBackend();
+    return store ? store.getItem(fullKey) : (memoryStore.get(fullKey) ?? null);
   };
 
-  const set = (key: string, value: string): void => {
-    const fullKey = makeKey(key);
-    const store = getStorage();
-    if (store) {
-      store.setItem(fullKey, value);
-    } else {
-      memoryStore.set(fullKey, value);
+  const set = (k: string, v: string): void => {
+    const fullKey = makeKey(k);
+    const store = getStorageBackend();
+    if (store) store.setItem(fullKey, v);
+    else memoryStore.set(fullKey, v);
+  };
+
+  const remove = (k: string): void => {
+    const fullKey = makeKey(k);
+    const store = getStorageBackend();
+    if (store) store.removeItem(fullKey);
+    else memoryStore.delete(fullKey);
+  };
+
+  const notify = (): void => {
+    for (const fn of Array.from(listeners)) {
+      try {
+        fn();
+      } catch (err) {
+        console.error('[swr-login] JWTCredential listener error:', err);
+      }
     }
   };
 
-  const remove = (key: string): void => {
-    const fullKey = makeKey(key);
-    const store = getStorage();
-    if (store) {
-      store.removeItem(fullKey);
-    } else {
-      memoryStore.delete(fullKey);
-    }
-  };
+  // Cross-tab sync via storage event (localStorage only)
+  const storageHandler =
+    storage === 'localStorage' && typeof window !== 'undefined'
+      ? (e: StorageEvent) => {
+          if (e.key?.startsWith(`${prefix}_`)) notify();
+        }
+      : null;
+  if (storageHandler) {
+    window.addEventListener('storage', storageHandler);
+  }
 
-  return {
-    getAccessToken: () => get(KEYS.accessToken),
-    setAccessToken: (token) => set(KEYS.accessToken, token),
-    getRefreshToken: () => get(KEYS.refreshToken),
-    setRefreshToken: (token) => set(KEYS.refreshToken, token),
-    getExpiresAt: () => {
-      const val = get(KEYS.expiresAt);
-      return val ? Number(val) : null;
-    },
-    setExpiresAt: (expiresAt) => set(KEYS.expiresAt, String(expiresAt)),
-    clear: () => {
+  const credential: JWTCredential = {
+    version: '1.0',
+    storage,
+
+    hasAuth: () => Boolean(get(KEYS.accessToken)),
+
+    clear: async () => {
       remove(KEYS.accessToken);
       remove(KEYS.refreshToken);
       remove(KEYS.expiresAt);
+      notify();
+    },
+
+    getAccessToken: () => get(KEYS.accessToken),
+
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+
+    onExpire: undefined,
+
+    setTokens: ({ accessToken, refreshToken, expiresAt }) => {
+      set(KEYS.accessToken, accessToken);
+      if (refreshToken !== undefined) set(KEYS.refreshToken, refreshToken);
+      if (expiresAt !== undefined) set(KEYS.expiresAt, String(expiresAt));
+      notify();
+    },
+
+    getRefreshToken: () => get(KEYS.refreshToken),
+
+    getExpiresAt: () => {
+      const v = get(KEYS.expiresAt);
+      return v ? Number(v) : null;
     },
   };
+
+  return credential;
 }
+
+/** @deprecated v0.7 alias. Use `JWTCredential`. Will be removed in v1.0. */
+export const JWTAdapter = JWTCredential;

@@ -1,51 +1,34 @@
-import { isTokenExpired } from '@swr-login/core';
-import { useMemo } from 'react';
-import { useAuthContext } from '../context';
+/**
+ * @swr-login/react - useSession (v0.9).
+ *
+ * Reads the SessionStore via `useSyncExternalStore`. SSR-safe by virtue of
+ * the store's `getServerSnapshot` returning `{ user: null, status: 'loading' }`.
+ *
+ * Note: per RFC §4.10, **does NOT** expose `accessToken`. Use
+ * `useCredential().getAccessToken()` for HTTP authorization.
+ */
 
-export interface SessionInfo {
-  /** Current access token */
-  accessToken: string | null;
-  /** Current refresh token */
-  refreshToken: string | null;
-  /** Token expiration timestamp (ms since epoch) */
-  expiresAt: number | null;
-  /** Whether the access token has expired */
-  isExpired: boolean;
-  /** Whether tokens exist (regardless of expiry) */
-  hasTokens: boolean;
+import { useCallback, useSyncExternalStore } from 'react';
+import { useAuthRegistryContext } from '../context';
+
+export interface UseSessionReturn<TUser = unknown> {
+  user: TUser | null;
+  status: 'loading' | 'authenticated' | 'unauthenticated';
+  /** Force-refresh the session (re-runs `fetchSession`). */
+  mutate: () => Promise<void>;
 }
 
-/**
- * Hook to access raw session/token information.
- *
- * Useful for:
- * - Adding Authorization headers to custom requests
- * - Checking token expiry status
- * - Debugging session state
- *
- * @example
- * ```tsx
- * const { accessToken, isExpired } = useSession();
- *
- * const fetchData = () => fetch('/api/data', {
- *   headers: { Authorization: `Bearer ${accessToken}` },
- * });
- * ```
- */
-export function useSession(): SessionInfo {
-  const { tokenManager } = useAuthContext();
-
-  return useMemo(() => {
-    const accessToken = tokenManager.getAccessToken();
-    const refreshToken = tokenManager.getRefreshToken();
-    const expiresAt = tokenManager.getAccessToken() ? tokenManager.getExpiresAt() : null;
-
-    return {
-      accessToken,
-      refreshToken,
-      expiresAt,
-      isExpired: isTokenExpired(expiresAt),
-      hasTokens: !!accessToken,
-    };
-  }, [tokenManager]);
+export function useSession<TUser = unknown>(): UseSessionReturn<TUser> {
+  const { sessionStore } = useAuthRegistryContext();
+  const snapshot = useSyncExternalStore(
+    sessionStore.subscribe,
+    sessionStore.getSnapshot,
+    sessionStore.getServerSnapshot,
+  );
+  const mutate = useCallback(() => sessionStore.refresh(), [sessionStore]);
+  return {
+    user: snapshot.user as TUser | null,
+    status: snapshot.status,
+    mutate,
+  };
 }

@@ -1,115 +1,220 @@
-import { type AuthResponse, NetworkError, type SWRLoginPlugin } from '@swr-login/core';
+/**
+ * @swr-login/method-password v0.9 - Username/password login method.
+ *
+ * Both a factory function (`createPasswordMethod(config)`) and a
+ * zero-config default instance (`passwordMethod`) are exported per
+ * RFC §6.3 (official-method requirement).
+ */
 
-/** Credentials for password-based login */
+import {
+  type BaseLoginMethodHandle,
+  type LoginMethod,
+  LoginRejection,
+  NetworkError,
+  defineLoginMethod,
+} from '@swr-login/core';
+import { useAuthInternal } from '@swr-login/react';
+import { useState } from 'react';
+
 export interface PasswordCredentials {
-  /** Username, email, or phone number */
   username: string;
-  /** User's password */
   password: string;
-  /** Optional: remember me flag */
   rememberMe?: boolean;
 }
 
-export interface PasswordPluginOptions {
-  /** URL of your login API endpoint */
-  loginUrl: string;
-  /** URL of your logout API endpoint (optional) */
-  logoutUrl?: string;
-  /** Custom fetch options (e.g., headers) */
-  fetchOptions?: RequestInit;
-  /**
-   * Transform server response to AuthResponse.
-   * Override if your API has a different response shape.
-   */
-  transformResponse?: (data: unknown) => AuthResponse;
+export interface PasswordResponse {
+  user: unknown;
+  accessToken: string;
+  refreshToken?: string;
+  /** Unix epoch milliseconds. */
+  expiresAt?: number;
 }
 
+export interface PasswordHandle
+  extends BaseLoginMethodHandle<PasswordCredentials, PasswordResponse> {
+  submit: (input: PasswordCredentials) => Promise<PasswordResponse>;
+}
+
+export interface PasswordMethodConfig {
+  /** Login API endpoint. Default: `'/api/auth/login'`. */
+  loginUrl?: string;
+  /** Optional logout API endpoint. */
+  logoutUrl?: string;
+  /** Custom fetch options merged into the request. */
+  fetchOptions?: RequestInit;
+  /** Transform server response into `PasswordResponse`. */
+  transformResponse?: (data: unknown) => PasswordResponse;
+  /**
+   * Custom error mapper. When omitted, network/4xx errors are translated to
+   * `LoginRejection` with `code: 'ERR_PASSWORD_LOGIN_FAILED'`.
+   */
+  translateError?: (raw: unknown) => LoginRejection;
+  /**
+   * Override the method id (default: `'swr-login/password'`). Useful for
+   * vendor-namespaced derivatives.
+   */
+  id?: string;
+  /** Override the meta label (default: `'Username & password'`). */
+  label?: string;
+  slot?: string | string[];
+  order?: number;
+}
+
+const METHOD_ID_DEFAULT = 'swr-login/password';
+
 /**
- * Password login plugin for username/password authentication.
+ * Create a configured password login method.
  *
  * @example
  * ```ts
- * import { PasswordPlugin } from '@swr-login/plugin-password';
+ * import { createPasswordMethod } from '@swr-login/method-password';
  *
- * const plugin = PasswordPlugin({
+ * export const passwordMethod = createPasswordMethod({
  *   loginUrl: '/api/auth/login',
- *   logoutUrl: '/api/auth/logout',
  * });
- *
- * // Use with SWRLoginProvider
- * <SWRLoginProvider config={{ plugins: [plugin], ... }}>
  * ```
  */
-export function PasswordPlugin(
-  options: PasswordPluginOptions,
-): SWRLoginPlugin<PasswordCredentials> {
-  const { loginUrl, logoutUrl, fetchOptions = {}, transformResponse } = options;
+export function createPasswordMethod(
+  config: PasswordMethodConfig = {},
+): LoginMethod<PasswordCredentials, PasswordResponse, PasswordHandle> {
+  const {
+    loginUrl = '/api/auth/login',
+    logoutUrl,
+    fetchOptions = {},
+    transformResponse,
+    translateError,
+    id = METHOD_ID_DEFAULT,
+    label = 'Username & password',
+    slot = 'primary',
+    order,
+  } = config;
 
-  return {
-    name: 'password',
-    type: 'password',
+  // logoutUrl is informational; useLogout() calls credential.clear() locally.
+  // A future hook could allow methods to declare a server-side logout endpoint.
+  void logoutUrl;
 
-    async login(credentials, ctx) {
-      const response = await fetch(loginUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...((fetchOptions.headers as Record<string, string>) ?? {}),
-        },
-        body: JSON.stringify(credentials),
-        credentials: 'include',
-        ...fetchOptions,
-      });
-
-      if (!response.ok) {
-        throw new NetworkError(`Login failed: ${response.statusText}`, response.status);
-      }
-
-      const data = await response.json();
-
-      if (transformResponse) {
-        const authResponse = transformResponse(data);
-        ctx.setTokens({
-          accessToken: authResponse.accessToken,
-          refreshToken: authResponse.refreshToken,
-          expiresAt: authResponse.expiresAt,
-        });
-        return authResponse;
-      }
-
-      // Default: expect standard AuthResponse shape
-      const authResponse: AuthResponse = {
-        user: data.user,
-        accessToken: data.accessToken ?? data.access_token ?? data.token,
-        refreshToken: data.refreshToken ?? data.refresh_token,
-        expiresAt: data.expiresAt ?? data.expires_at ?? Date.now() + 3600 * 1000,
-      };
-
-      ctx.setTokens({
-        accessToken: authResponse.accessToken,
-        refreshToken: authResponse.refreshToken,
-        expiresAt: authResponse.expiresAt,
-      });
-
-      return authResponse;
+  return defineLoginMethod<PasswordCredentials, PasswordResponse, PasswordHandle>({
+    id,
+    meta: {
+      label,
+      slot,
+      order,
     },
+    use(): PasswordHandle {
+      const { credential, refreshSession, publishEvent, createMethodAbort } = useAuthInternal();
+      const [state, setState] = useState<PasswordHandle['state']>('idle');
+      const [error, setError] = useState<LoginRejection | Error | undefined>();
 
-    async logout(ctx) {
-      if (logoutUrl) {
+      const submit = async (input: PasswordCredentials): Promise<PasswordResponse> => {
+        const ac = createMethodAbort();
+        setState('pending');
+        setError(undefined);
         try {
-          await fetch(logoutUrl, {
+          const res = await fetch(loginUrl, {
             method: 'POST',
-            credentials: 'include',
             headers: {
               'Content-Type': 'application/json',
               ...((fetchOptions.headers as Record<string, string>) ?? {}),
             },
+            body: JSON.stringify(input),
+            credentials: 'include',
+            signal: ac.signal,
+            ...fetchOptions,
           });
-        } catch {
-          // Swallow logout API errors - local cleanup is more important
+          if (!res.ok) {
+            throw new NetworkError(`Login failed: ${res.statusText}`);
+          }
+          const raw = await res.json();
+          const auth = transformResponse
+            ? transformResponse(raw)
+            : ({
+                user: raw.user,
+                accessToken: raw.accessToken ?? raw.access_token ?? raw.token,
+                refreshToken: raw.refreshToken ?? raw.refresh_token,
+                expiresAt: raw.expiresAt ?? raw.expires_at,
+              } as PasswordResponse);
+
+          // Persist tokens via the credential adapter when supported.
+          const setter = (
+            credential as Credential & {
+              setTokens?: (t: {
+                accessToken: string;
+                refreshToken?: string;
+                expiresAt?: number;
+              }) => void;
+            }
+          ).setTokens;
+          if (typeof setter === 'function') {
+            setter({
+              accessToken: auth.accessToken,
+              refreshToken: auth.refreshToken,
+              expiresAt: auth.expiresAt,
+            });
+          }
+
+          await refreshSession();
+          publishEvent({
+            kind: 'login',
+            methodId: id,
+            payload: { username: input.username },
+            timestamp: Date.now(),
+          });
+          setState('success');
+          return auth;
+        } catch (err) {
+          if ((err as { name?: string })?.name === 'AbortError') {
+            setState('idle');
+            throw err;
+          }
+          const rejection = translateError
+            ? translateError(err)
+            : LoginRejection.is(err)
+              ? err
+              : new LoginRejection('Password login failed', {
+                  code: 'ERR_PASSWORD_LOGIN_FAILED',
+                  reason: 'password_login_failed',
+                  methodId: id,
+                  cause: err,
+                });
+          setError(rejection);
+          setState('error');
+          throw rejection;
         }
-      }
-      ctx.clearTokens();
+      };
+
+      const reset = () => {
+        setError(undefined);
+        setState('idle');
+      };
+
+      return {
+        submit,
+        state,
+        error,
+        reset,
+        cancel: () => {
+          // Submit-scoped abort is method-internal; consumers cancel by reset.
+          reset();
+        },
+      };
     },
-  };
+    onRegistryMount: undefined,
+  });
 }
+
+/**
+ * Zero-config default password method. Targets `/api/auth/login`.
+ *
+ * @example
+ * ```ts
+ * import { passwordMethod } from '@swr-login/method-password';
+ * <AuthHookRegistry methods={[passwordMethod]} ... />
+ * ```
+ */
+export const passwordMethod = createPasswordMethod();
+
+// Type aliases for ergonomic re-export
+type Credential = import('@swr-login/core').Credential;
+
+/** @deprecated v0.7 alias. Will be removed in v1.0. */
+export const PasswordPlugin = createPasswordMethod;

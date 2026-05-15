@@ -1,24 +1,25 @@
 'use client';
 
-import { useLogin } from '@swr-login/react';
 import { type FormEvent, useState } from 'react';
+import { useLoginMethod } from 'swr-login';
+import type { PasswordHandle } from 'swr-login/methods/password';
 
 export function LoginForm() {
-  const {
-    login: passwordLogin,
-    isLoading: isPasswordLoading,
-    error: passwordError,
-  } = useLogin('password');
+  const handle = useLoginMethod<{ use(): PasswordHandle }>('swr-login/password') as
+    | PasswordHandle
+    | undefined;
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
+  if (!handle) return null;
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     try {
-      await passwordLogin({ username, password });
+      await handle.submit({ username, password });
     } catch {
-      // Error is captured in passwordError
+      // Error is captured in handle.error
     }
   };
 
@@ -54,18 +55,18 @@ export function LoginForm() {
         />
       </div>
 
-      {passwordError && (
+      {handle.error && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-          {passwordError.message}
+          {handle.error.message}
         </div>
       )}
 
       <button
         type="submit"
-        disabled={isPasswordLoading}
+        disabled={handle.state === 'pending'}
         className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg font-medium transition"
       >
-        {isPasswordLoading ? 'Signing in...' : 'Sign in with Password'}
+        {handle.state === 'pending' ? 'Signing in...' : 'Sign in with Password'}
       </button>
     </form>
   );

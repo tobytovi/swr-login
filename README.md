@@ -1,17 +1,19 @@
 <div align="center">
 
-# 🔐 swr-login
+# swr-login
 
-**The best React Hook for auth state management.**
+**Plugin-as-Hook React Authentication State Management.**
 
-Works with Auth.js, Better Auth, Clerk, or your own backend.
+Every login method is a React Hook. Zero external state dependencies.
 
 [![npm](https://img.shields.io/npm/v/swr-login?color=blue)](https://www.npmjs.com/package/swr-login)
 [![bundle size](https://img.shields.io/bundlephobia/minzip/swr-login?label=size)](https://bundlephobia.com/package/swr-login)
-[![license](https://img.shields.io/github/license/swr-login/swr-login)](https://github.com/tobytovi/swr-login/blob/main/LICENSE)
+[![license](https://img.shields.io/github/license/tobytovi/swr-login)](https://github.com/tobytovi/swr-login/blob/main/LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue)](https://www.typescriptlang.org/)
 
-[English](#features) · [中文](https://github.com/tobytovi/swr-login/blob/main/README.zh-CN.md)
+**v0.9.0-alpha.0** — Pre-release for v1.0 GA. [Migration from v0.7 →](./MIGRATION.md)
+
+[English](#features) · [中文](./README.zh-CN.md) · [Docs](https://swr-login.dev)
 
 </div>
 
@@ -19,687 +21,159 @@ Works with Auth.js, Better Auth, Clerk, or your own backend.
 
 ## Features
 
-- ⚡ **SWR-Powered** — Stale-while-revalidate strategy for instant auth state. No loading spinners.
-- 🔌 **Plugin Architecture** — Every login channel is an independent npm package. Install only what you need.
-- 🔄 **Zero-Refresh Login/Logout** — Token silent refresh, optimistic UI, cross-tab sync via BroadcastChannel.
-- 🪶 **Tiny Core** — `@swr-login/core` is <3KB gzipped. No bloat.
-- 🛡️ **Secure by Default** — PKCE, CSRF state validation, HttpOnly cookie support, sensitive data cleanup.
-- 📦 **100% TypeScript** — Full generics, JSDoc on every API, AI-coding-assistant friendly.
-- 🎯 **Framework Agnostic Core** — React bindings in `@swr-login/react`, core logic is UI-free.
-- 🔗 **Multi-Step Login** — Built-in support for multi-step interactive login flows (MFA, SMS verification, class-code login, etc.).
-- 🪝 **afterAuth Hook** — Intercept post-login flow before `fetchUser`. Role-based redirect, skip fetchUser, or abort login.
-- 🛡️ **fetchUser Error Handling** — Built-in `validateUserOnLogin`, `onFetchUserError` callback with retry / logout / ignore strategies.
-- 🌐 **Unified Login Error Translation** — One `translateLoginError` hook covers plugin errors, `afterAuth`, login-time `fetchUser` and SWR background revalidation. Single source of truth for the "code × variant" UI message matrix.
+- **Plugin-as-Hook** — Every auth method is a React Hook. Type-safe handle inference, unlimited extensibility.
+- **Zero External State** — `useSyncExternalStore` replaces SWR. No SWR peer dependency.
+- **Stable Hook Order** — `MethodSlotList` ensures Hook call order is always stable across re-renders.
+- **`onRegistryMount`** — Async lifecycle hook for OAuth callbacks, Passkey setup, and other mount-time side effects.
+- **Multi-tab Sync** — `BroadcastSync` keeps session state consistent across browser tabs.
+- **100% TypeScript** — Three-generic `LoginMethod<TInput, TResult, THandle>` infers custom handle fields.
+- **Conformance Test Suite** — `@swr-login/testing` validates any custom method via `testLoginMethod()`.
+
+## Installation
+
+```sh
+npm install swr-login
+# or
+pnpm add swr-login
+```
 
 ## Quick Start
 
-```bash
-npm install swr-login react swr
-```
-
 ```tsx
-import { SWRLoginProvider, useLogin, useUser, useLogout } from 'swr-login';
-import { presets } from 'swr-login/presets';
+import { AuthHookRegistry, useSession, useLoginMethod, useLogout, AuthGuard } from 'swr-login';
+import { createJWTCredential } from 'swr-login/adapters/jwt';
+import { createPasswordMethod } from 'swr-login/methods/password';
+import type { PasswordHandle } from 'swr-login/methods/password';
 
-// 1. One-line config with presets
-const config = presets.password({
-  loginUrl: '/api/login',
-  userUrl: '/api/me',
-});
+// 1. Configure credential and methods (outside component — stable references)
+const credential = createJWTCredential({ storage: 'localStorage' });
+const passwordMethod = createPasswordMethod({ loginUrl: '/api/auth/login' });
+const METHODS = [passwordMethod];
 
-function App() {
-  return (
-    <SWRLoginProvider config={config}>
-      <MyApp />
-    </SWRLoginProvider>
-  );
+async function fetchSession(token: { accessToken: string | null }) {
+  if (!token.accessToken) return null;
+  const res = await fetch('/api/auth/me', {
+    headers: { Authorization: `Bearer ${token.accessToken}` },
+  });
+  return res.ok ? res.json() : null;
 }
 
-// 2. Use hooks anywhere
-function LoginButton() {
-  const { login, isLoading } = useLogin('password');
-  const { user, isAuthenticated } = useUser();
-  const { logout } = useLogout();
-
-  if (isAuthenticated) {
-    return (
-      <div>
-        <span>Hello, {user.name}!</span>
-        <button onClick={() => logout()}>Sign Out</button>
-      </div>
-    );
-  }
-
+// 2. Wrap your app
+function App() {
   return (
-    <button
-      onClick={() => login({ username: 'alice', password: 'secret' })}
-      disabled={isLoading}
+    <AuthHookRegistry
+      credential={credential}
+      methods={METHODS}
+      fetchSession={fetchSession}
+      security={{ enableBroadcastSync: true }}
     >
-      Sign In
-    </button>
+      <AppContent />
+    </AuthHookRegistry>
   );
 }
-```
 
-**That's it.** No page refresh. All components using `useUser()` update instantly.
+// 3. Build your login form — type-safe handle inference
+function LoginForm() {
+  const handle = useLoginMethod<typeof passwordMethod>('swr-login/password') as PasswordHandle;
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
 
-## What's Inside `swr-login`
-
-The `swr-login` package is an **all-in-one umbrella package** — install it once and you get everything. No need to install sub-packages separately.
-
-```bash
-npm install swr-login
-# That's all you need. Every adapter and plugin is included.
-```
-
-It bundles the following sub-packages and re-exports them via sub-path imports:
-
-| Sub-path Import | Included Package | Description |
-|-----------------|-----------------|-------------|
-| `swr-login` | `@swr-login/core` + `@swr-login/react` | Core logic + React bindings (Provider, Hooks, AuthGuard) |
-| `swr-login/presets` | — | Ready-to-use config presets (password, social, passkey, full) |
-| `swr-login/adapters/jwt` | `@swr-login/adapter-jwt` | JWT token storage (localStorage / sessionStorage / memory) |
-| `swr-login/adapters/session` | `@swr-login/adapter-session` | Session storage (tab-scoped, cleared on close) |
-| `swr-login/adapters/cookie` | `@swr-login/adapter-cookie` | Cookie storage (BFF pattern, HttpOnly support) |
-| `swr-login/plugins/password` | `@swr-login/plugin-password` | Username / Password login |
-| `swr-login/plugins/oauth-google` | `@swr-login/plugin-oauth-google` | Google OAuth 2.0 + PKCE |
-| `swr-login/plugins/oauth-github` | `@swr-login/plugin-oauth-github` | GitHub OAuth |
-| `swr-login/plugins/oauth-wechat` | `@swr-login/plugin-oauth-wechat` | WeChat QR Code / H5 Web Auth |
-| `swr-login/plugins/passkey` | `@swr-login/plugin-passkey` | WebAuthn / Passkey (Biometric / Security Key) |
-
-All adapters and plugins are declared as `optionalDependencies`, so your package manager installs them automatically but they won't break your build if a platform doesn't support one.
-
-> 💡 **Prefer granular control?** You can still install individual `@swr-login/*` scoped packages — see [Fine-grained Imports](#fine-grained-imports).
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────┐
-│                   Your React App                     │
-├─────────────────────────────────────────────────────┤
-│   Hook Layer (@swr-login/react)                      │
-│   useLogin · useUser · useLogout · useSession        │
-│   useMultiStepLogin · useAuthInjector                │
-│   usePermission · AuthGuard                          │
-├─────────────────────────────────────────────────────┤
-│   Plugin Layer                                       │
-│   🔑 password · 🔵 google · ⚫ github               │
-│   🟢 wechat · 🔐 passkey                            │
-├─────────────────────────────────────────────────────┤
-│   Core Layer (@swr-login/core)                       │
-│   StateMachine · TokenManager · PluginManager        │
-│   EventEmitter · BroadcastSync                       │
-├─────────────────────────────────────────────────────┤
-│   Storage Adapters                                   │
-│   JWT · Session · Cookie (BFF)                       │
-└─────────────────────────────────────────────────────┘
-```
-
-## Presets
-
-Presets provide ready-to-use configurations for common auth scenarios. Just provide the essential parameters:
-
-### Password Login
-
-```ts
-import { presets } from 'swr-login/presets';
-
-const config = presets.password({
-  loginUrl: '/api/auth/login',
-  logoutUrl: '/api/auth/logout',
-  userUrl: '/api/me',
-});
-```
-
-### Social Login (OAuth)
-
-```ts
-const config = presets.social({
-  providers: {
-    github: { clientId: 'your-github-client-id' },
-    google: { clientId: 'your-google-client-id' },
-    wechat: { appId: 'wx_your_app_id' },
-  },
-  userUrl: '/api/me',
-});
-```
-
-### Passkey (WebAuthn)
-
-```ts
-const config = presets.passkey({
-  registerOptionsUrl: '/api/auth/passkey/register/options',
-  registerVerifyUrl: '/api/auth/passkey/register/verify',
-  loginOptionsUrl: '/api/auth/passkey/login/options',
-  loginVerifyUrl: '/api/auth/passkey/login/verify',
-  userUrl: '/api/me',
-});
-```
-
-### Full (Password + Social + Passkey)
-
-```ts
-const config = presets.full({
-  password: { loginUrl: '/api/auth/login' },
-  providers: {
-    github: { clientId: 'gh-client-id' },
-    google: { clientId: 'google-client-id' },
-  },
-  passkey: {
-    registerOptionsUrl: '/api/auth/passkey/register/options',
-    registerVerifyUrl: '/api/auth/passkey/register/verify',
-    loginOptionsUrl: '/api/auth/passkey/login/options',
-    loginVerifyUrl: '/api/auth/passkey/login/verify',
-  },
-  userUrl: '/api/me',
-});
-```
-
-All presets support extra options like `onLogin`, `onLogout`, `onError`, `security`, and `adapterOptions`.
-
-## `createAuthConfig`
-
-For advanced use cases, use `createAuthConfig` to get full type-safety and IDE auto-completion when building config manually:
-
-```ts
-// auth.config.ts
-import { createAuthConfig } from 'swr-login';
-import { JWTAdapter } from 'swr-login/adapters/jwt';
-import { PasswordPlugin } from 'swr-login/plugins/password';
-
-export default createAuthConfig({
-  adapter: JWTAdapter({ storage: 'localStorage' }),
-  plugins: [PasswordPlugin({ loginUrl: '/api/auth/login' })],
-  fetchUser: (token) =>
-    fetch('/api/me', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json()),
-  onLogin: (user) => console.log('Logged in:', user.name),
-
-  // Intercept after plugin login, before fetchUser
-  afterAuth: async ({ pluginName, authResponse, skipFetchUser }) => {
-    const role = decodeJwt(authResponse.accessToken).role;
-    if (role === 'admin') {
-      skipFetchUser(); // admins don't need fetchUser
-      window.location.href = '/admin';
-    }
-  },
-
-  // Validate user immediately after login (default: true)
-  validateUserOnLogin: true,
-
-  // Handle fetchUser errors globally
-  onFetchUserError: (error) => {
-    if (error.message.includes('disabled')) return 'logout';
-    return 'ignore';
-  },
-
-  // Customize SWR revalidation behavior for useUser()
-  swrOptions: {
-    revalidateOnFocus: false,     // disable revalidation on window focus
-    revalidateOnReconnect: true,  // revalidate when network recovers
-  },
-});
-```
-
-```tsx
-// App.tsx
-import { SWRLoginProvider } from 'swr-login';
-import authConfig from './auth.config';
-
-function App() {
   return (
-    <SWRLoginProvider config={authConfig}>
-      <MyApp />
-    </SWRLoginProvider>
+    <form onSubmit={async (e) => {
+      e.preventDefault();
+      await handle.submit({ username, password });
+    }}>
+      <input value={username} onChange={e => setUsername(e.target.value)} placeholder="Username" />
+      <input type="password" value={password} onChange={e => setPassword(e.target.value)} />
+      {handle.error && <p style={{ color: 'red' }}>{handle.error.message}</p>}
+      <button disabled={handle.state === 'pending'}>
+        {handle.state === 'pending' ? 'Signing in…' : 'Sign in'}
+      </button>
+    </form>
+  );
+}
+
+// 4. Check session state
+function AppContent() {
+  const { status } = useSession();
+  if (status === 'loading') return <Spinner />;
+  return (
+    <AuthGuard fallback={<LoginForm />}>
+      <Dashboard />
+    </AuthGuard>
   );
 }
 ```
 
-## Lifecycle Hooks
+## Official Methods
 
-### `afterAuth`
+| Package | Sub-path | Description |
+|---|---|---|
+| (built-in) | `swr-login/methods/password` | Username + password |
+| (built-in) | `swr-login/methods/mock` | Dev-only mock login |
+| (built-in) | `swr-login/methods/oauth-github` | GitHub OAuth + PKCE |
+| (built-in) | `swr-login/methods/oauth-google` | Google OAuth + PKCE |
+| (built-in) | `swr-login/methods/oauth-wechat` | WeChat OAuth (H5 redirect) |
+| (built-in) | `swr-login/methods/passkey` | WebAuthn Passkey |
 
-The `afterAuth` hook runs **after a plugin's `login()` succeeds** but **before `fetchUser` is called**. This gives you a chance to inspect the auth response, perform role-based redirects, or skip `fetchUser` entirely.
+## Official Adapters
+
+| Sub-path | Description |
+|---|---|
+| `swr-login/adapters/jwt` | localStorage JWT tokens |
+| `swr-login/adapters/cookie` | HTTP-only cookie session |
+| `swr-login/adapters/session` | sessionStorage tokens |
+
+## Building Custom Methods
 
 ```ts
-const config = createAuthConfig({
-  // ...plugins, adapter, fetchUser...
-  afterAuth: async ({ pluginName, authResponse, skipFetchUser }) => {
-    // Example: redirect teachers to a different app
-    if (pluginName === 'password') {
-      const role = await checkUserRole(authResponse.accessToken);
-      if (role === 'teacher') {
-        skipFetchUser();
-        window.location.href = '/teacher-admin';
-        return;
-      }
+import { defineLoginMethod, useAuthInternal, LoginRejection } from 'swr-login';
+
+export const myMethod = defineLoginMethod<MyInput, MyResult, MyHandle>({
+  id: 'acme/sso',  // scope/name required
+  meta: { label: 'Acme SSO', slot: 'primary' },
+  use() {
+    const { refreshSession, publishEvent } = useAuthInternal();
+    // ... return handle
+  },
+  // Optional: run at mount time (OAuth callbacks, Passkey setup, etc.)
+  async onRegistryMount(internal) {
+    const code = new URLSearchParams(window.location.search).get('code');
+    if (code) {
+      await exchangeCode(code, internal.registrySignal);
+      await internal.refreshSession();
     }
-    // Default: continue to fetchUser
+    return () => { /* cleanup on unmount */ };
   },
 });
 ```
 
-| Behavior | How |
-|----------|-----|
-| Continue to `fetchUser` | Return normally (don't call `skipFetchUser`) |
-| Skip `fetchUser` | Call `context.skipFetchUser()` — `login()` resolves immediately |
-| Abort login & rollback tokens | Throw an error — tokens are cleared, `login()` rejects |
-
-> **Note:** `afterAuth` only runs during explicit `login()` calls, not during SWR background revalidation.
-
-### `onFetchUserError`
-
-Handle errors from `fetchUser` globally — both during login validation and SWR background revalidation:
+## Testing Methods
 
 ```ts
-const config = createAuthConfig({
-  // ...
-  onFetchUserError: (error) => {
-    if (error.message.includes('account disabled')) return 'logout';
-    if (error.message.includes('network')) return 'retry';
-    return 'ignore'; // keep current state, error stored in lastError
+import { testLoginMethod, createMockCredential } from '@swr-login/testing';
+
+testLoginMethod(myMethod, {
+  mockCredential: createMockCredential(),
+  testSubmit: async (handle) => {
+    await handle.submit!({ token: 'mock' });
+    expect(handle.state).toBe('success');
   },
 });
 ```
 
-| Strategy | Effect |
-|----------|--------|
-| `'retry'` | Re-invoke `fetchUser` once (max 1 retry to prevent loops) |
-| `'logout'` | Clear tokens, transition to `unauthenticated` |
-| `'ignore'` | Keep current state; error is available via `useUser().lastError` |
+## Migration from v0.7
 
-### `validateUserOnLogin`
-
-When `true` (default), `login()` automatically calls `fetchUser` after the plugin succeeds. If `fetchUser` throws (e.g., "account disabled"), `login()` rejects and tokens are rolled back.
-
-Set to `false` to skip this validation:
-
-```ts
-const config = createAuthConfig({
-  validateUserOnLogin: false, // login() resolves without calling fetchUser
-});
-```
-
-### `translateLoginError` — Unified Login Error Translation
-
-A single hook that intercepts **every** error raised in the login pipeline — plugin login, `afterAuth`, login-time `fetchUser`, *and* SWR background revalidation — and lets you translate it into a canonical `LoginRejection` object before it surfaces to your UI.
-
-The goal: **one source of truth** for the "error code × business variant → user-facing message" matrix, instead of repeating it in `onPreReset`, `afterAuth`, `LoginForm.catch`, and `onFetchUserError`.
-
-```ts
-import { LoginRejection, createAuthConfig } from 'swr-login';
-
-const config = createAuthConfig({
-  // ...adapter, plugins, fetchUser, afterAuth...
-
-  translateLoginError: (error, ctx) => {
-    // ctx.phase: 'plugin_login' | 'after_auth' | 'fetch_user' | 'revalidate'
-    // ctx.loginContext: forwarded verbatim from `login(creds, { context })`;
-    //                   undefined during background revalidation.
-    // ctx.pluginName: present for plugin_login / after_auth phases.
-    const variant = (ctx.loginContext as { variant?: 'teacher' | 'student' })?.variant ?? 'teacher';
-    const code = matchHttpCode(error); // your helper
-
-    if (code === 112) {
-      return new LoginRejection(
-        variant === 'student'
-          ? 'School is disabled — please contact your teacher'
-          : 'School is disabled — please contact the administrator',
-        { reason: 'school_disabled', variant, code: 112 },
-      );
-    }
-    if (code === 113) {
-      return new LoginRejection(
-        variant === 'student'
-          ? 'Account is disabled — please contact your teacher'
-          : 'Account is disabled — please contact the administrator',
-        { reason: 'account_disabled', variant, code: 113 },
-      );
-    }
-    return null; // not recognised → fall back to legacy error path
-  },
-});
-```
-
-**What the library guarantees when the translator returns a `LoginRejection`:**
-
-1. Tokens are cleared (`tokenManager.clearTokens()`).
-2. State machine transitions to `unauthenticated`.
-3. `onFetchUserError` is **skipped** for that error (no double handling).
-4. `login()` rejects with the `LoginRejection` *as-is* — no further wrapping.
-5. `useUser().lastError` exposes the same `LoginRejection`.
-
-**In your UI, catch becomes a single branch:**
+See [MIGRATION.md](./MIGRATION.md) for a complete v0.7 → v0.9 guide.
 
 ```tsx
-try {
-  await login(credentials, { context: { variant: 'teacher' } });
-} catch (err) {
-  if (LoginRejection.is(err)) {
-    setError({ message: err.message }); // already translated for the right variant
-    return;
-  }
-  // genuine errors only (network, password mismatch, ...)
-  setError({ message: 'Network error, please retry.' });
-}
+// v0.7
+<SWRLoginProvider config={{ adapter: ..., plugins: [...], fetchUser: ... }}>
+
+// v0.9
+<AuthHookRegistry credential={...} methods={[...]} fetchSession={...}>
 ```
-
-**Phase × hit/miss matrix:**
-
-| Configuration | Translator hit | Translator miss / not configured |
-|---------------|----------------|----------------------------------|
-| Only `translateLoginError` | Tokens cleared, `unauthenticated`, `login()` rejects with `LoginRejection` | Original error rethrown / SWR default |
-| `translateLoginError` + `onFetchUserError` | Translator wins; `onFetchUserError` is **skipped** | `onFetchUserError` runs as today |
-| Only `onFetchUserError` (legacy) | — | Behaviour unchanged |
-
-**Contract for implementers:**
-
-- Must be **synchronous** and **side-effect-free**. Do all I/O *before* the error is thrown (e.g. inside `afterAuth`).
-- If the translator itself throws, the library swallows the exception, logs `console.error`, and falls back to the legacy path — a buggy translator can never break login.
-- The `__swrLoginTranslated` marker is set as a non-enumerable property; it does not leak into `JSON.stringify` output.
-
-### `swrOptions`
-
-Customize the SWR behavior of the internal `useUser()` hook. Only a safe subset of SWR options is exposed — internal options like `fetcher` and `shouldRetryOnError` are managed by swr-login.
-
-```ts
-const config = createAuthConfig({
-  // ...
-  swrOptions: {
-    revalidateOnFocus: false,      // default: true
-    revalidateOnReconnect: false,  // default: true
-    dedupingInterval: 5000,        // default: 2000 (ms)
-    focusThrottleInterval: 10000,  // default: 5000 (ms)
-    refreshInterval: 30000,        // default: 0 (disabled)
-  },
-});
-```
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `revalidateOnFocus` | `true` | Revalidate user data when window gets focused |
-| `revalidateOnReconnect` | `true` | Revalidate when browser regains network |
-| `dedupingInterval` | `2000` | Dedupe requests with same key in this time span (ms) |
-| `focusThrottleInterval` | `5000` | Throttle focus revalidation events (ms) |
-| `refreshInterval` | `0` | Polling interval (ms). `0` = disabled |
-
-> **Tip:** If `useUser()` was previously hardcoding `revalidateOnFocus: true` and you need to disable it (e.g., to avoid unnecessary API calls on tab switch), set `swrOptions.revalidateOnFocus` to `false`.
-
-## Core Hooks
-
-| Hook | Purpose |
-|------|--------|
-| `useLogin(pluginName?)` | Trigger login flow via any registered plugin |
-| `useMultiStepLogin(pluginName)` | Drive multi-step login flows with step state management |
-| `useAuthInjector()` | Inject external auth state into swr-login (escape hatch) |
-| `useUser<T>()` | Get current user with SWR caching, auto-revalidation, `lastError` & `clearError`, `lastChangeSource` & `lastChangeEvent` |
-| `useUserChange<T>()` | Subscribe to user transitions as a discrete event stream (re-renders on each change) |
-| `useUserChangeEffect(cb)` | Register a side-effect callback on user transitions without causing re-renders |
-| `useUserChangeOn(source, cb)` | Filtered variant of `useUserChangeEffect` — fires only when source matches |
-| `useLogout()` | Secure logout with cross-tab broadcast |
-| `useAdapter()` | Synchronous `hasAuth()` check + raw adapter access (useful for homepage auto-redirect before SWR hydration) |
-| `useSession()` | Access raw tokens, expiry info |
-| `usePermission()` | Check roles & permissions declaratively |
-
-## User Change Source
-
-`useUser()` now exposes `lastChangeSource` and `lastChangeEvent` so you can tell *why* the user value changed — not just *that* it changed.
-
-### `UserChangeSource` values
-
-| Source | When it fires |
-|--------|---------------|
-| `'initial'` | Provider first mount; `fetchUser` resolved for the first time |
-| `'login'` | Explicit `login()` / multi-step finalize / `injectAuth()` call |
-| `'logout'` | Explicit `logout()` / `injectLogout()` call |
-| `'revalidate'` | SWR background revalidation (focus / reconnect / polling / manual `mutate()`) produced a different user |
-| `'external'` | Cross-tab sync via BroadcastChannel / storage events |
-
-### Quick examples
-
-```tsx
-// 1. Declarative snapshot via useUser()
-const { user, isLoading, lastChangeSource } = useUser();
-
-useEffect(() => {
-  // Suppress welcome toast on cold-start page refresh
-  if (user && lastChangeSource === 'login') {
-    toast.success(`Welcome back, ${user.name}!`);
-  }
-}, [user, lastChangeSource]);
-```
-
-```tsx
-// 2. Subscribe to every transition without re-rendering
-useUserChangeEffect((e) => {
-  if (e.source === 'login') analytics.track('user_login', { userId: e.user?.id });
-  if (e.source === 'logout') analytics.track('user_logout', { userId: e.previousUser?.id });
-});
-```
-
-```tsx
-// 3. Filter by source — fires only on explicit login
-useUserChangeOn('login', (e) => router.push('/dashboard'));
-
-// 4. Multiple sources at once
-useUserChangeOn(['login', 'external'], (e) => refreshSidebar());
-```
-
-```tsx
-// 5. Discrete event stream (re-renders on each change)
-const change = useUserChange();
-useEffect(() => {
-  if (change?.source === 'external') refreshSidebar();
-}, [change]);
-```
-
-> **Tip:** Use `lastChangeSource === 'initial'` to detect an existing session on page load (e.g., to show a redirect overlay) without triggering the same logic after an explicit login.
-
-## AuthGuard Component
-
-```tsx
-<AuthGuard
-  permissions={['admin', 'editor']}
-  requireAll={false}
-  fallback={<Navigate to="/login" />}
-  loadingComponent={<Skeleton />}
->
-  <ProtectedContent />
-</AuthGuard>
-```
-
-## Official Plugins
-
-| Package | Channel | Auth Method |
-|---------|---------|-------------|
-| `swr-login/plugins/password` | Username/Password | Form POST |
-| `swr-login/plugins/oauth-google` | Google | OAuth 2.0 + PKCE (Popup/Redirect) |
-| `swr-login/plugins/oauth-github` | GitHub | OAuth (Popup/Redirect) |
-| `swr-login/plugins/oauth-wechat` | WeChat | QR Code Scan / H5 Web Auth |
-| `swr-login/plugins/passkey` | Passkey/WebAuthn | Biometric / Security Key |
-
-## Storage Adapters
-
-| Package | Strategy | Best For |
-|---------|----------|----------|
-| `swr-login/adapters/jwt` | localStorage / sessionStorage / memory | SPAs (default) |
-| `swr-login/adapters/session` | sessionStorage | Tab-scoped sessions |
-| `swr-login/adapters/cookie` | Cookie (SameSite + Secure) | BFF pattern |
-
-## Multi-Step Login
-
-For login flows that require multiple steps with UI interaction in between (e.g., class-code login, MFA, SMS verification), use `MultiStepLoginPlugin` + `useMultiStepLogin`:
-
-### Define a Multi-Step Plugin
-
-```ts
-import type { MultiStepLoginPlugin } from 'swr-login';
-
-const ClassCodePlugin: MultiStepLoginPlugin<{ classCode: string; loginCode: string }> = {
-  name: 'class-code',
-  type: 'multi-step',
-  steps: [
-    {
-      name: 'verify-code',
-      async execute({ classCode, loginCode }, ctx) {
-        const res = await fetch('/api/class-login', {
-          method: 'POST',
-          body: JSON.stringify({ classCode, loginCode }),
-        }).then(r => r.json());
-        return { classLoginToken: res.class_login_token };
-      },
-    },
-    {
-      name: 'select-student',
-      async execute({ classLoginToken }, ctx) {
-        const res = await fetch(`/api/class-students?token=${classLoginToken}`)
-          .then(r => r.json());
-        return { students: res.list, classLoginToken };
-      },
-    },
-    {
-      name: 'get-token',
-      async execute({ userId, classLoginToken }, ctx) {
-        const res = await fetch('/api/class-student-token', {
-          method: 'POST',
-          body: JSON.stringify({ userId, classLoginToken }),
-        }).then(r => r.json());
-        return { skey: res.skey, userId: res.user_id };
-      },
-    },
-  ],
-  async finalizeAuth({ skey, userId }, ctx) {
-    ctx.setTokens({ accessToken: skey, expiresAt: Date.now() + 86400000 });
-    return {
-      user: { id: userId, name: '' },
-      accessToken: skey,
-      expiresAt: Date.now() + 86400000,
-    };
-  },
-  // Required by SWRLoginPlugin interface, but not used for multi-step
-  async login() { throw new Error('Use useMultiStepLogin()'); },
-};
-```
-
-### Use in Components
-
-```tsx
-import { useMultiStepLogin } from 'swr-login';
-
-function ClassCodeLoginFlow() {
-  const {
-    currentStepName, stepData, start, next, back, isLoading, error, isComplete,
-  } = useMultiStepLogin<{ classCode: string; loginCode: string }>('class-code');
-
-  if (isComplete) return <Navigate to="/dashboard" />;
-
-  if (currentStepName === 'select-student') {
-    return (
-      <StudentList
-        students={stepData.students}
-        onSelect={(userId) => next({ userId, classLoginToken: stepData.classLoginToken })}
-        onBack={back}
-        isLoading={isLoading}
-      />
-    );
-  }
-
-  // Default: show the code input form
-  return <ClassCodeForm onSubmit={start} isLoading={isLoading} error={error} />;
-}
-```
-
-### Inject External Auth State
-
-For cases where the login flow is entirely managed outside swr-login (e.g., third-party SDK, iframe login), use `useAuthInjector` as an escape hatch:
-
-```tsx
-import { useAuthInjector } from 'swr-login';
-
-function ExternalLoginCallback() {
-  const { injectAuth } = useAuthInjector();
-
-  const handleCallback = async (token: string, user: User) => {
-    await injectAuth({
-      user,
-      accessToken: token,
-      expiresAt: Date.now() + 86400000,
-    });
-    // All useUser() / AuthGuard components now recognize the login state
-    router.push('/dashboard');
-  };
-}
-```
-
-## Custom Plugin
-
-Build your own login channel in minutes:
-
-```ts
-import type { SWRLoginPlugin } from 'swr-login';
-
-const MyPlugin: SWRLoginPlugin<{ token: string }> = {
-  name: 'my-sso',
-  type: 'oauth',
-  async login({ token }, ctx) {
-    const res = await fetch('/api/sso/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token }),
-    });
-    const data = await res.json();
-    ctx.setTokens({ accessToken: data.accessToken, expiresAt: data.expiresAt });
-    return data;
-  },
-};
-```
-
-## Comparison
-
-| Feature | swr-login | Auth.js v5 | Clerk | Better Auth |
-|---------|:---------:|:----------:|:-----:|:-----------:|
-| Zero-refresh login/logout | ✅ Best | ⚠️ | ✅ | ⚠️ |
-| Bundle size (core) | **<3KB** | ~30KB | ~50KB | ~15KB |
-| Plugin architecture | ✅ | ❌ | ❌ | ✅ |
-| WeChat / Alipay | ✅ | ❌ | ❌ | ❌ |
-| Framework agnostic core | ✅ | ⚠️ | ❌ | ✅ |
-| Full TypeScript generics | ✅ | ⚠️ | ✅ | ✅ |
-| Free & open source | ✅ MIT | ✅ MIT | ❌ Paid | ✅ MIT |
-
-## Security
-
-- **PKCE** enforced for all OAuth flows
-- **CSRF state** parameter validation on every callback
-- **BFF-friendly** cookie adapter for HttpOnly token storage
-- **Cross-tab sync** logout via BroadcastChannel
-- **Auto token cleanup** on page visibility change (optional)
-
-## Fine-grained Imports
-
-If you prefer installing only the packages you need, all sub-packages are available individually:
-
-```bash
-npm install @swr-login/react @swr-login/adapter-jwt @swr-login/plugin-password
-```
-
-```ts
-import { SWRLoginProvider, useLogin } from '@swr-login/react';
-import { JWTAdapter } from '@swr-login/adapter-jwt';
-import { PasswordPlugin } from '@swr-login/plugin-password';
-```
-
-See the full list of scoped packages in the [中文文档](https://github.com/tobytovi/swr-login/blob/main/README.zh-CN.md#包列表).
 
 ## License
 
-[MIT](https://github.com/tobytovi/swr-login/blob/main/LICENSE)
-
----
-
-<div align="center">
-
-**[Documentation](https://swr-login.dev)** · **[Examples](https://github.com/tobytovi/swr-login/tree/main/examples)** · **[Discord](https://discord.gg/swr-login)**
-
-Made with ❤️ for the React community
-
-</div>
+MIT © swr-login Contributors

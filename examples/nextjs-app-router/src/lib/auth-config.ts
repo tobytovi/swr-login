@@ -1,54 +1,67 @@
-import { JWTAdapter } from '@swr-login/adapter-jwt';
-import type { SWRLoginConfig } from '@swr-login/core';
-import { GitHubOAuthPlugin } from '@swr-login/plugin-oauth-github';
-import { GoogleOAuthPlugin } from '@swr-login/plugin-oauth-google';
-import { PasskeyPlugin } from '@swr-login/plugin-passkey';
-import { PasswordPlugin } from '@swr-login/plugin-password';
+'use client';
+
+import type { AuthHookRegistryProps } from 'swr-login';
+import { createJWTCredential } from 'swr-login/adapters/jwt';
+import { createGitHubOAuthMethod } from 'swr-login/methods/oauth-github';
+import { createPasskeyMethod } from 'swr-login/methods/passkey';
+import { createPasswordMethod } from 'swr-login/methods/password';
+
+export type User = {
+  id: string;
+  name: string;
+  email: string;
+  roles?: string[];
+};
 
 /**
- * Shared auth configuration used by the SWRLoginProvider.
- *
- * In a real app, replace placeholder URLs with your actual API endpoints.
+ * Build the credential and methods array for <AuthHookRegistry>.
+ * Called once in Providers (useMemo), so instances are stable.
  */
-export function createAuthConfig(): SWRLoginConfig {
+export function createAuthSetup(): Pick<
+  AuthHookRegistryProps,
+  'credential' | 'methods' | 'fetchSession' | 'onSessionChange' | 'security'
+> {
+  const credential = createJWTCredential({ storage: 'localStorage' });
+
+  const methods = [
+    createPasswordMethod({
+      loginUrl: '/api/auth/login',
+      label: 'Username & Password',
+      slot: 'primary',
+    }),
+    createGitHubOAuthMethod({
+      clientId: process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID ?? 'your-github-client-id',
+      callbackUrl: '/api/auth/github/callback',
+      slot: 'social',
+    }),
+    createPasskeyMethod({
+      rpId: typeof window !== 'undefined' ? window.location.hostname : 'localhost',
+      registerOptionsUrl: '/api/auth/passkey/register-options',
+      registerVerifyUrl: '/api/auth/passkey/register-verify',
+      loginOptionsUrl: '/api/auth/passkey/login-options',
+      loginVerifyUrl: '/api/auth/passkey/login-verify',
+      slot: 'social',
+    }),
+  ];
+
+  async function fetchSession(token: { accessToken: string | null }) {
+    if (!token.accessToken) return null;
+    const res = await fetch('/api/auth/me', {
+      headers: { Authorization: `Bearer ${token.accessToken}` },
+    });
+    if (!res.ok) return null;
+    return res.json() as Promise<User>;
+  }
+
+  function onSessionChange(event: { kind: string; user: unknown }) {
+    console.log('[swr-login]', event.kind, event.user);
+  }
+
   return {
-    adapter: JWTAdapter({ storage: 'localStorage' }),
-    plugins: [
-      PasswordPlugin({
-        loginUrl: '/api/auth/login',
-        logoutUrl: '/api/auth/logout',
-      }),
-      GoogleOAuthPlugin({
-        clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? 'your-google-client-id',
-        tokenEndpoint: '/api/auth/google/callback',
-      }),
-      GitHubOAuthPlugin({
-        clientId: process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID ?? 'your-github-client-id',
-        tokenEndpoint: '/api/auth/github/callback',
-      }),
-      PasskeyPlugin({
-        rpId: typeof window !== 'undefined' ? window.location.hostname : 'localhost',
-        registerOptionsUrl: '/api/auth/passkey/register-options',
-        registerVerifyUrl: '/api/auth/passkey/register-verify',
-        loginOptionsUrl: '/api/auth/passkey/login-options',
-        loginVerifyUrl: '/api/auth/passkey/login-verify',
-      }),
-    ],
-    fetchUser: async ({ token }: { token: string }) => {
-      const res = await fetch('/api/auth/me', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Failed to fetch user');
-      return res.json();
-    },
-    onLogin: (user) => {
-      console.log('[swr-login] Logged in:', user);
-    },
-    onLogout: () => {
-      console.log('[swr-login] Logged out');
-    },
-    onError: (error) => {
-      console.error('[swr-login] Auth error:', error);
-    },
+    credential,
+    methods,
+    fetchSession,
+    onSessionChange,
+    security: { enableBroadcastSync: true },
   };
 }

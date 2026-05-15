@@ -1,15 +1,16 @@
 'use client';
 
-import { useUser } from '@swr-login/react';
+import type { User } from '@/lib/auth-config';
+import { useSession } from 'swr-login';
 
 /**
  * Lightweight auth status indicator for the navbar.
- * Demonstrates useUser() for conditional rendering without page reload.
+ * Demonstrates useSession() for conditional rendering without page reload.
  */
 export function AuthStatus() {
-  const { user, isAuthenticated, isLoading } = useUser();
+  const { user, status } = useSession<User>();
 
-  if (isLoading) {
+  if (status === 'loading') {
     return (
       <div className="flex items-center gap-2 text-sm text-gray-400">
         <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
@@ -18,7 +19,7 @@ export function AuthStatus() {
     );
   }
 
-  if (!isAuthenticated) {
+  if (status === 'unauthenticated') {
     return (
       <div className="flex items-center gap-2 text-sm text-gray-500">
         <div className="w-2 h-2 bg-gray-400 rounded-full" />
