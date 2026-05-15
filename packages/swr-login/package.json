@@ -118,18 +118,18 @@
   },
   "dependencies": {
     "@swr-login/core": "workspace:*",
-    "@swr-login/react": "workspace:*"
-  },
-  "optionalDependencies": {
-    "@swr-login/adapter-jwt": "workspace:*",
-    "@swr-login/adapter-cookie": "workspace:*",
-    "@swr-login/adapter-session": "workspace:*",
+    "@swr-login/react": "workspace:*",
     "@swr-login/method-password": "workspace:*",
     "@swr-login/method-mock": "workspace:*",
     "@swr-login/method-oauth-github": "workspace:*",
     "@swr-login/method-oauth-google": "workspace:*",
     "@swr-login/method-oauth-wechat": "workspace:*",
     "@swr-login/method-passkey": "workspace:*"
+  },
+  "optionalDependencies": {
+    "@swr-login/adapter-jwt": "workspace:*",
+    "@swr-login/adapter-cookie": "workspace:*",
+    "@swr-login/adapter-session": "workspace:*"
   },
   "peerDependencies": {
     "react": ">=18.0.0"

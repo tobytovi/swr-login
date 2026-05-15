@@ -10,7 +10,7 @@
     "lint:fix": "biome check --write .",
     "clean": "turbo run clean && rm -rf node_modules",
     "changeset": "changeset",
-    "release": "pnpm --filter './packages/*' build && changeset publish",
+    "release": "pnpm turbo run build --filter='./packages/*' && changeset publish",
     "prepare": "husky"
   },
   "devDependencies": {

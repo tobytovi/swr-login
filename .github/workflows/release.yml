@@ -32,7 +32,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Build
-        run: pnpm --filter './packages/*' build
+        run: pnpm turbo run build --filter='./packages/*'
 
       - name: Create Release PR or Publish
         id: changesets

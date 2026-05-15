@@ -14,7 +14,11 @@ export default defineConfig({
     'methods/passkey': 'src/methods/passkey.ts',
   },
   format: ['esm', 'cjs'],
-  dts: true,
+  dts: {
+    // Do not resolve external packages' types — they each ship their own .d.ts.
+    // This prevents build-order failures when method-* packages are not yet built.
+    resolve: false,
+  },
   clean: true,
   sourcemap: true,
   minify: false,

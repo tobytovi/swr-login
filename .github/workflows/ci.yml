@@ -27,10 +27,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Lint
-        run: pnpm --filter './packages/*' exec biome check --no-errors-on-unmatched .
+        run: pnpm biome check --no-errors-on-unmatched packages/
 
       - name: Build
-        run: pnpm --filter './packages/*' build
+        run: pnpm turbo run build --filter='./packages/*'
 
       - name: Test
-        run: pnpm --filter './packages/*' test
+        run: pnpm turbo run test --filter='./packages/*'

@@ -27,8 +27,7 @@
     "clean": "rm -rf dist"
   },
   "peerDependencies": {
-    "react": ">=18.0.0",
-    "swr-login": "workspace:*"
+    "react": ">=18.0.0"
   },
   "dependencies": {
     "@swr-login/core": "workspace:*",
